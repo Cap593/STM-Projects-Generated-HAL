@@ -67,6 +67,20 @@ The projects mainly focus on learning and experimenting with embedded peripheral
 
 ---
 
+# AI Usage
+
+All projects in this repository are developed with the assistance of AI tools for:
+- Concept understanding
+- Debugging support
+- Driver implementation guidance
+- Architecture discussions
+- Learning acceleration
+- Code review and experimentation
+
+The primary goal is educational learning, experimentation, and improving embedded software development skills.
+
+---
+
 # Repository Purpose
 
 This repository is mainly intended for:
