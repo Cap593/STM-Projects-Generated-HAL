@@ -1,0 +1,12 @@
+.metadata/
+*.log
+*.o
+*.d
+*.elf
+*.bin
+*.hex
+*.map
+*.srec
+Debug/
+Release/
+build/
