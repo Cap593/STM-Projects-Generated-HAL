@@ -11,8 +11,7 @@ extern "C" {
 
 void Crypto_Hw_Init(void);
 
-Std_ReturnType Crypto_Hw_ProcessJob(uint32_t cryptoObjectId,
-                                    const Crypto_JobType *job);
+Std_ReturnType Crypto_Hw_ProcessJob(uint32_t cryptoObjectId,const Crypto_JobType *job);
 
 #ifdef __cplusplus
 }

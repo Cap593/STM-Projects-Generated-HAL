@@ -17,8 +17,24 @@ static const CryIf_ChannelConfigType CryIf_Channels[] =
     }
 };
 
+static const CryIf_KeyMapType CryIf_KeyMap[] =
+{
+    {
+        .csmKeyId     = 1u,
+        .cryptoKeyId  = 101u
+    },
+    {
+        .csmKeyId     = 2u,
+        .cryptoKeyId  = 102u
+    }
+};
+
 const CryIf_ConfigType CryIf_Config =
 {
     .channels   = CryIf_Channels,
-    .numChannels = (uint32_t)(sizeof(CryIf_Channels) / sizeof(CryIf_Channels[0]))
+    .numChannels = (uint32_t)(sizeof(CryIf_Channels) / sizeof(CryIf_Channels[0])),
+    .keyMap     = CryIf_KeyMap,
+    .numKeys    = (uint32_t)(sizeof(CryIf_KeyMap) / sizeof(CryIf_KeyMap[0]))
 };
+
+

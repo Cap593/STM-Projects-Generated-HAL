@@ -22,6 +22,8 @@ Std_ReturnType Csm_RandomSeed(uint32_t jobId,
 /* Simple scheduler for asynchronous jobs */
 void Csm_MainFunction(void);
 
+Std_ReturnType CsmJobKeyGenerate(uint32_t jobId,uint8_t *resultPtr,uint32_t *resultLengthPtr);
+
 #ifdef __cplusplus
 }
 #endif

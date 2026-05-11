@@ -11,8 +11,12 @@ typedef struct
 {
     uint32_t           jobId;
     Crypto_ServiceType service;
+    Crypto_OperationModeType opMode;
     uint32_t           cryIfChannelId;   /* 0 = HW channel, 1 = SW channel */
+    uint32_t           keyId;
+    uint32_t           targetKeyId;
     bool               isAsynchronous;   /* true = queue + Csm_MainFunction */
+    uint32_t           keyLength;
     uint32_t           maxResultLength;
 } Csm_JobConfigType;
 
@@ -22,9 +26,13 @@ typedef struct
     uint32_t                  numJobs;
 } Csm_ConfigType;
 
-/* Example job IDs */
-#define CSM_JOB_ID_HW_RNG   (1001u)
-#define CSM_JOB_ID_SW_RNG   (1002u)
+/* job IDs */
+#define CSM_JOB_ID_HW_RNG      (1001u)
+#define CSM_JOB_ID_SW_RNG      (1002u)
+
+/* New key-generation job IDs */
+#define CSM_JOB_ID_HW_KEYGEN    (3001u)
+#define CSM_JOB_ID_SW_KEYGEN    (3002u)
 
 extern const Csm_ConfigType Csm_Config;
 
