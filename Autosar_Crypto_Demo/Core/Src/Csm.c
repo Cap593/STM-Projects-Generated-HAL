@@ -35,7 +35,7 @@ static Std_ReturnType Csm_EnqueueJob(const Crypto_JobType *job)
     return E_NOT_OK; /* queue full */
 }
 
-static Std_ReturnType Csm_SubmitToCryIf(const Crypto_JobType *job)
+static Std_ReturnType Csm_SubmitToCryIf(Crypto_JobType *job)
 {
     return CryIf_ProcessJob(job);
 }
@@ -103,6 +103,74 @@ Std_ReturnType Csm_RandomSeed(uint32_t jobId,
     job.seedLength = seedLength;
 
     return Csm_SubmitToCryIf(&job);
+}
+
+Std_ReturnType CsmJobKeyGenerate
+(
+    uint32_t jobId,
+    uint8_t *resultPtr,
+    uint32_t *resultLengthPtr
+)
+{
+    Crypto_JobType job;
+    const Csm_JobConfigType *cfg;
+
+    if ((resultPtr == NULL) ||
+        (resultLengthPtr == NULL))
+    {
+        return E_NOT_OK;
+    }
+
+    /* -------------------------------
+     * Find configured job
+     * ------------------------------- */
+    cfg = Csm_FindJobConfig(jobId);
+
+    if (cfg == NULL)
+    {
+        return E_NOT_OK;
+    }
+
+    if (cfg->service != CRYPTO_SERVICE_KEYGENERATE)
+    {
+        return E_NOT_OK;
+    }
+
+    if (*resultLengthPtr < cfg->keyLength)
+    {
+        return E_NOT_OK;
+    }
+
+    /* -------------------------------
+     * Build runtime job object
+     * ------------------------------- */
+    memset(&job, 0, sizeof(Crypto_JobType));
+
+    job.jobId              = cfg->jobId;
+    job.channelId          = cfg->cryIfChannelId;
+
+    job.keyId              = cfg->keyId;
+    job.targetKeyId        = cfg->targetKeyId;
+
+    job.service            = cfg->service;
+    job.opMode             = cfg->opMode;
+
+    job.resultPtr          = resultPtr;
+    job.resultLengthPtr    = resultLengthPtr;
+
+    job.keyLength          = cfg->keyLength;
+
+    /* -------------------------------
+     * Sync vs Async
+     * ------------------------------- */
+    if (cfg->isAsynchronous == true)
+    {
+        return Csm_EnqueueJob(&job);
+    }
+    else
+    {
+        return Csm_SubmitToCryIf(&job);
+    }
 }
 
 void Csm_MainFunction(void)

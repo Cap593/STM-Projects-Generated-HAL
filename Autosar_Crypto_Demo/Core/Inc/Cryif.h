@@ -11,9 +11,9 @@ extern "C" {
 
 void CryIf_Init(void);
 
-Std_ReturnType CryIf_ProcessJob(const Crypto_JobType *job);
-Std_ReturnType CryIf_RandomGenerate(const Crypto_JobType *job);
-Std_ReturnType CryIf_RandomSeed(const Crypto_JobType *job);
+Std_ReturnType CryIf_ProcessJob(Crypto_JobType *job);
+Std_ReturnType CryIf_RandomGenerate(Crypto_JobType *job);
+Std_ReturnType CryIf_RandomSeed(Crypto_JobType *job);
 
 #ifdef __cplusplus
 }

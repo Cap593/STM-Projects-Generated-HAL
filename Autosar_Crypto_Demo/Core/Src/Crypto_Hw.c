@@ -37,6 +37,47 @@ static const Crypto_Hw_ObjectConfigType *Crypto_Hw_FindObject(uint32_t objectId)
     return NULL;
 }
 
+Crypto_KeySlotType Crypto_KeySlots[] =
+{
+    {
+        .keyId = 101u,
+        .status = CRYPTO_KEY_INVALID,
+        .element =
+        {
+            .elementId = CRYPTO_KE_KEY_MATERIAL,
+			.data = {0u},
+            .length = 0u
+        }
+    },
+
+    {
+        .keyId = 102u,
+        .status = CRYPTO_KEY_INVALID,
+        .element =
+        {
+            .elementId = CRYPTO_KE_KEY_MATERIAL,
+			.data = {0u},
+            .length = 0u
+        }
+    }
+};
+
+static Crypto_KeySlotType* Crypto_FindKeySlot(uint32_t keyId)
+{
+    uint32_t i;
+
+    for (i = 0; i < (sizeof(Crypto_KeySlots) /
+                      sizeof(Crypto_KeySlots[0])); i++)
+    {
+        if (Crypto_KeySlots[i].keyId == keyId)
+        {
+            return &Crypto_KeySlots[i];
+        }
+    }
+
+    return NULL;
+}
+
 static uint32_t Crypto_XorShift32(uint32_t x)
 {
     x ^= (x << 13);
@@ -148,6 +189,55 @@ static Std_ReturnType Crypto_SeedRandom_SW(const uint8_t *seed, uint32_t seedLen
     return Crypto_SeedState(&Crypto_State[1], seed, seedLen, 0x22222222u);
 }
 
+/* Crypto HW Key Generation */
+static Std_ReturnType Crypto_GenerateKey_HW(Crypto_KeySlotType *slot,uint32_t keyLength)
+{
+    uint32_t i;
+    uint32_t rand;
+
+    if (slot == NULL)
+    {
+        return E_NOT_OK;
+    }
+
+    for (i = 0; i < keyLength; i += 4)
+    {
+        if (HAL_RNG_GenerateRandomNumber(&hrng, &rand) != HAL_OK)
+        {
+            return E_NOT_OK;
+        }
+
+        memcpy(&slot->element.data[i],
+               &rand,
+               ((keyLength - i) >= 4u) ? 4u :
+                                         (keyLength - i));
+    }
+
+    slot->element.length = keyLength;
+
+    return E_OK;
+}
+
+/* Crypto SW Key Generation */
+static Std_ReturnType Crypto_GenerateKey_SW(Crypto_KeySlotType *slot,uint32_t keyLength)
+{
+    if (slot == NULL)
+    {
+        return E_NOT_OK;
+    }
+
+    if (mbedtls_ctr_drbg_random(&ctr_drbg,
+                                slot->element.data,
+                                keyLength) != 0)
+    {
+        return E_NOT_OK;
+    }
+
+    slot->element.length = keyLength;
+
+    return E_OK;
+}
+
 void Crypto_Hw_Init(void)
 {
     Crypto_State[0].initialized = true;
@@ -168,8 +258,7 @@ void Crypto_Hw_Init(void)
     }
 }
 
-Std_ReturnType Crypto_Hw_ProcessJob(uint32_t cryptoObjectId,
-                                    const Crypto_JobType *job)
+Std_ReturnType Crypto_Hw_ProcessJob(uint32_t cryptoObjectId,const Crypto_JobType *job)
 {
     const Crypto_Hw_ObjectConfigType *obj = Crypto_Hw_FindObject(cryptoObjectId);
     if ((obj == NULL) || (job == NULL))
@@ -177,14 +266,14 @@ Std_ReturnType Crypto_Hw_ProcessJob(uint32_t cryptoObjectId,
         return E_NOT_OK;
     }
 
-    /* This example keeps RNG as SINGLECALL, but we still show the mode check. */
-    if (job->opMode != CRYPTO_OPERATIONMODE_SINGLECALL)
-    {
-        return E_NOT_OK;
-    }
-
     if (job->service == CRYPTO_SERVICE_RANDOMGENERATE)
     {
+        /* This example keeps RNG as SINGLECALL, but we still show the mode check. */
+        if (job->opMode != CRYPTO_OPERATIONMODE_SINGLECALL)
+        {
+            return E_NOT_OK;
+        }
+
         if (obj->supportsRandomGenerate == false)
         {
             return E_NOT_OK;
@@ -225,6 +314,63 @@ Std_ReturnType Crypto_Hw_ProcessJob(uint32_t cryptoObjectId,
             return Crypto_SeedRandom_SW(job->seedPtr, job->seedLength);
         }
     }
+    else if (job->service == CRYPTO_SERVICE_KEYGENERATE)
+    {
+    	Crypto_KeySlotType *slot;
+    	Std_ReturnType ret = E_NOT_OK;
 
-    return E_NOT_OK;
+    	slot = Crypto_FindKeySlot(job->keyId);
+
+    	if (slot == NULL)
+    	{
+    		return E_NOT_OK;
+    	}
+
+    	if (obj->path == CRYPTO_PATH_HW)
+    	{
+    		ret = Crypto_GenerateKey_HW
+    				(
+    						slot,
+							job->keyLength
+    				);
+    	}
+    	else
+    	{
+    		ret = Crypto_GenerateKey_SW
+    				(
+    						slot,
+							job->keyLength
+    				);
+    	}
+
+    	if (ret == E_OK)
+    	{
+        slot->status = CRYPTO_KEY_VALID;
+
+        if ((job->resultPtr == NULL) ||
+            (job->resultLengthPtr == NULL))
+        {
+            return E_NOT_OK;
+        }
+
+        if (*(job->resultLengthPtr) < slot->element.length)
+        {
+            return E_NOT_OK;
+        }
+
+        memcpy(job->resultPtr,
+               slot->element.data,
+               slot->element.length);
+
+        *(job->resultLengthPtr) =
+            slot->element.length;
+    	}
+
+    	return ret;
+    }
+    else
+    {
+        return E_NOT_OK;
+    }
+
 }

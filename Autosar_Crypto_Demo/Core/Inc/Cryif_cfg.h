@@ -4,6 +4,15 @@
 #include "Crypto_Common.h"
 
 /*
+ * Maps CSM KeyId to Crypto Driver KeyId
+ */
+typedef struct
+{
+    uint32_t csmKeyId;
+    uint32_t cryptoKeyId;
+} CryIf_KeyMapType;
+
+/*
  * CryIf maps a CSM-facing channel to a concrete crypto driver object.
  * Here we keep 2 channels:
  *   0 -> hardware RNG path
@@ -21,6 +30,10 @@ typedef struct
 {
     const CryIf_ChannelConfigType *channels;
     uint32_t                       numChannels;
+
+    const CryIf_KeyMapType        *keyMap;
+    uint32_t                       numKeys;
+
 } CryIf_ConfigType;
 
 #define CRYIF_CHANNEL_HW   (0u)

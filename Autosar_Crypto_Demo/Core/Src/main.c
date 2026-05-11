@@ -45,9 +45,10 @@
 /* USER CODE BEGIN PD */
 
 /* Job IDs from config */
-#define TEST_JOB_HW CSM_JOB_ID_HW_RNG
-#define TEST_JOB_SW CSM_JOB_ID_SW_RNG
-
+#define TEST_JOB_HW 			CSM_JOB_ID_HW_RNG
+#define TEST_JOB_SW 			CSM_JOB_ID_SW_RNG
+#define TEST_JOB_HW_KEYGEN   	CSM_JOB_ID_HW_KEYGEN
+#define TEST_JOB_SW_KEYGEN   	CSM_JOB_ID_SW_KEYGEN
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -66,6 +67,13 @@ uint8_t rngBuffer[16];
 uint32_t rngLength = 16;
 mbedtls_entropy_context entropy;
 mbedtls_ctr_drbg_context ctr_drbg;
+
+//For key generation
+uint8_t hwKeyBuffer[32];
+uint8_t swKeyBuffer[32];
+
+uint32_t hwKeyLength = 16;
+uint32_t swKeyLength = 16;
 
 /* USER CODE END PV */
 
@@ -90,8 +98,6 @@ void UART_Print(char *msg)
 void print_buffer(uint8_t *buf, uint32_t len)
 {
     char msg[100];
-
-    UART_Print("RNG : ");
 
     for (uint32_t i = 0; i < len; i++)
     {
@@ -156,6 +162,7 @@ int main(void)
   if (Csm_RandomGenerate(TEST_JOB_HW, rngBuffer, &rngLength) == E_OK)
   {
 	  UART_Print("[HW RNG] SUCCESS\r\n");
+	  UART_Print("RNG : ");
 	  print_buffer(rngBuffer, rngLength);
   }
   else
@@ -184,7 +191,50 @@ int main(void)
   }
 
   UART_Print("[SW RNG] After processing:\r\n");
+  UART_Print("RNG : ");
   print_buffer(rngBuffer, rngLength);
+
+  UART_Print("\r\n");
+
+  UART_Print("== 🔐 TEST 3: HW KEY GENERATE ==\r\n");
+  hwKeyLength = 16;
+
+  memset(hwKeyBuffer, 0, sizeof(hwKeyBuffer));
+
+  if (CsmJobKeyGenerate(TEST_JOB_HW_KEYGEN,
+                        hwKeyBuffer,
+                        &hwKeyLength) == E_OK)
+  {
+      UART_Print("[HW KEYGEN] SUCCESS\r\n");
+      UART_Print("HW Generated Key : ");
+      print_buffer(hwKeyBuffer,
+                   hwKeyLength);
+  }
+  else
+  {
+      UART_Print("[HW KEYGEN] FAILED\r\n");
+  }
+
+  UART_Print("\r\n");
+
+  UART_Print("== 🔐 TEST 4: SW KEY GENERATE ==\r\n");
+  swKeyLength = 16;
+
+  memset(swKeyBuffer, 0, sizeof(swKeyBuffer));
+
+  if (CsmJobKeyGenerate(TEST_JOB_SW_KEYGEN,
+                        swKeyBuffer,
+                        &swKeyLength) == E_OK)
+  {
+      UART_Print("[SW KEYGEN] SUCCESS\r\n");
+      UART_Print("SW Generated Key : ");
+      print_buffer(swKeyBuffer,
+                   swKeyLength);
+  }
+  else
+  {
+      UART_Print("[SW KEYGEN] FAILED\r\n");
+  }
 
   UART_Print("\r\n");
 
