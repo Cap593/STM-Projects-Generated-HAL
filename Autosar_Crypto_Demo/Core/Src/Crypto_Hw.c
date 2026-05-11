@@ -258,6 +258,62 @@ void Crypto_Hw_Init(void)
     }
 }
 
+Std_ReturnType Crypto_Hw_KeyElementGet(
+    uint32_t cryptoKeyId,
+    uint32_t keyElementId,
+    uint8_t *keyElementPtr,
+    uint32_t *keyElementLengthPtr)
+{
+    Crypto_KeySlotType *slot;
+
+    if ((keyElementPtr == NULL) ||
+        (keyElementLengthPtr == NULL))
+    {
+        return E_NOT_OK;
+    }
+
+    slot = Crypto_FindKeySlot(cryptoKeyId);
+
+    if (slot == NULL)
+    {
+        return E_NOT_OK;
+    }
+
+    /*
+     * Key must be VALID
+     */
+    if (slot->status != CRYPTO_KEY_VALID)
+    {
+        return E_NOT_OK;
+    }
+
+    /*
+     * Verify requested element
+     */
+    if (slot->element.elementId != keyElementId)
+    {
+        return E_NOT_OK;
+    }
+
+    /*
+     * Verify output buffer size
+     */
+    if (*keyElementLengthPtr <
+         slot->element.length)
+    {
+        return E_NOT_OK;
+    }
+
+    memcpy(keyElementPtr,
+           slot->element.data,
+           slot->element.length);
+
+    *keyElementLengthPtr =
+        slot->element.length;
+
+    return E_OK;
+}
+
 Std_ReturnType Crypto_Hw_ProcessJob(uint32_t cryptoObjectId,const Crypto_JobType *job)
 {
     const Crypto_Hw_ObjectConfigType *obj = Crypto_Hw_FindObject(cryptoObjectId);

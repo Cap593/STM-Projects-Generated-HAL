@@ -75,6 +75,10 @@ uint8_t swKeyBuffer[32];
 uint32_t hwKeyLength = 16;
 uint32_t swKeyLength = 16;
 
+
+uint8_t keyReadBuffer[32];
+uint32_t keyReadLength = sizeof(keyReadBuffer);
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -237,6 +241,54 @@ int main(void)
   }
 
   UART_Print("\r\n");
+
+  memset(keyReadBuffer,
+         0,
+         sizeof(keyReadBuffer));
+
+  keyReadLength = sizeof(keyReadBuffer);
+
+  if (Csm_KeyElementGet(
+          1u,
+          CRYPTO_KE_KEY_MATERIAL,
+          keyReadBuffer,
+          &keyReadLength) == E_OK)
+  {
+      UART_Print("[HW KEY READBACK] SUCCESS\r\n");
+      UART_Print("Stored Key : ");
+
+      print_buffer(keyReadBuffer,
+                   keyReadLength);
+      UART_Print("\r\n");
+  }
+  else
+  {
+      UART_Print("[HW KEY READBACK] FAILED\r\n");
+  }
+
+  memset(keyReadBuffer,
+         0,
+         sizeof(keyReadBuffer));
+
+  keyReadLength = sizeof(keyReadBuffer);
+
+  if (Csm_KeyElementGet(
+          2u,
+          CRYPTO_KE_KEY_MATERIAL,
+          keyReadBuffer,
+          &keyReadLength) == E_OK)
+  {
+      UART_Print("[SW KEY READBACK] SUCCESS\r\n");
+      UART_Print("Stored Key : ");
+
+      print_buffer(keyReadBuffer,
+                   keyReadLength);
+      UART_Print("\r\n");
+  }
+  else
+  {
+      UART_Print("[SW KEY READBACK] FAILED\r\n");
+  }
 
   /* USER CODE END 2 */
 

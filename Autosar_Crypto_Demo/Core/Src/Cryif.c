@@ -89,6 +89,37 @@ Std_ReturnType CryIf_RandomGenerate(Crypto_JobType *job)
     return CryIf_ProcessJob(job);
 }
 
+Std_ReturnType CryIf_KeyElementGet(
+    uint32_t csmKeyId,
+    uint32_t keyElementId,
+    uint8_t *keyElementPtr,
+    uint32_t *keyElementLengthPtr)
+{
+    uint32_t cryptoKeyId;
+
+    if ((keyElementPtr == NULL) ||
+        (keyElementLengthPtr == NULL))
+    {
+        return E_NOT_OK;
+    }
+
+    /*
+     * Map virtual CSM KeyId
+     * to Crypto Driver KeyId
+     */
+    if (CryIf_MapKey(csmKeyId,
+                     &cryptoKeyId) != E_OK)
+    {
+        return E_NOT_OK;
+    }
+
+    return Crypto_Hw_KeyElementGet(
+                cryptoKeyId,
+                keyElementId,
+                keyElementPtr,
+                keyElementLengthPtr);
+}
+
 Std_ReturnType CryIf_RandomSeed(Crypto_JobType *job)
 {
     if ((job == NULL) || (job->service != CRYPTO_SERVICE_RANDOMSEED))
