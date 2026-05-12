@@ -45,10 +45,12 @@
 /* USER CODE BEGIN PD */
 
 /* Job IDs from config */
-#define TEST_JOB_HW 			CSM_JOB_ID_HW_RNG
-#define TEST_JOB_SW 			CSM_JOB_ID_SW_RNG
-#define TEST_JOB_HW_KEYGEN   	CSM_JOB_ID_HW_KEYGEN
-#define TEST_JOB_SW_KEYGEN   	CSM_JOB_ID_SW_KEYGEN
+#define TEST_JOB_HW 				CSM_JOB_ID_HW_RNG
+#define TEST_JOB_SW 				CSM_JOB_ID_SW_RNG
+#define TEST_JOB_HW_KEYGEN   		CSM_JOB_ID_HW_KEYGEN
+#define TEST_JOB_SW_KEYGEN   		CSM_JOB_ID_SW_KEYGEN
+#define TEST_JOB_BOOT_MAC_KEYGEN    CSM_JOB_ID_BOOT_MAC_KEYGEN
+#define TEST_JOB_AES_KEYGEN			CSM_JOB_ID_AES_KEYGEN
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -200,7 +202,7 @@ int main(void)
 
   UART_Print("\r\n");
 
-  UART_Print("== 🔐 TEST 3: HW KEY GENERATE ==\r\n");
+  UART_Print("== 🔐 TEST 3: GENERATE KEY using HW RNG : SECRET_KEY ==\r\n");
   hwKeyLength = 16;
 
   memset(hwKeyBuffer, 0, sizeof(hwKeyBuffer));
@@ -221,7 +223,7 @@ int main(void)
 
   UART_Print("\r\n");
 
-  UART_Print("== 🔐 TEST 4: SW KEY GENERATE ==\r\n");
+  UART_Print("== 🔐 TEST 4: GENERATE KEY using SW RNG : MASTER KEY ==\r\n");
   swKeyLength = 16;
 
   memset(swKeyBuffer, 0, sizeof(swKeyBuffer));
@@ -254,7 +256,7 @@ int main(void)
           keyReadBuffer,
           &keyReadLength) == E_OK)
   {
-      UART_Print("[HW KEY READBACK] SUCCESS\r\n");
+      UART_Print("TEST 5: [HW KEY READBACK] SUCCESS\r\n");
       UART_Print("Stored Key : ");
 
       print_buffer(keyReadBuffer,
@@ -278,7 +280,7 @@ int main(void)
           keyReadBuffer,
           &keyReadLength) == E_OK)
   {
-      UART_Print("[SW KEY READBACK] SUCCESS\r\n");
+      UART_Print("TEST 6: [SW KEY READBACK] SUCCESS\r\n");
       UART_Print("Stored Key : ");
 
       print_buffer(keyReadBuffer,
@@ -289,6 +291,48 @@ int main(void)
   {
       UART_Print("[SW KEY READBACK] FAILED\r\n");
   }
+
+  UART_Print("== 🔐 TEST 7: GENERATE KEY SLOT 3 : BOOTMAC_KEY ==\r\n");
+  hwKeyLength = 16;
+
+  memset(hwKeyBuffer, 0, sizeof(hwKeyBuffer));
+
+  if (CsmJobKeyGenerate(TEST_JOB_BOOT_MAC_KEYGEN,
+                        hwKeyBuffer,
+                        &hwKeyLength) == E_OK)
+  {
+      UART_Print("[HW KEYGEN] SUCCESS\r\n");
+      UART_Print("HW Generated Key : ");
+      print_buffer(hwKeyBuffer,
+                   hwKeyLength);
+  }
+  else
+  {
+      UART_Print("[HW KEYGEN] FAILED\r\n");
+  }
+
+  UART_Print("\r\n");
+
+  UART_Print("== 🔐 TEST 8: GENERATE KEY SLOT 4 : AES KEY ==\r\n");
+  hwKeyLength = 16;
+
+  memset(hwKeyBuffer, 0, sizeof(hwKeyBuffer));
+
+  if (CsmJobKeyGenerate(TEST_JOB_AES_KEYGEN,
+                        hwKeyBuffer,
+                        &hwKeyLength) == E_OK)
+  {
+      UART_Print("[HW KEYGEN] SUCCESS\r\n");
+      UART_Print("HW Generated Key : ");
+      print_buffer(hwKeyBuffer,
+                   hwKeyLength);
+  }
+  else
+  {
+      UART_Print("[HW KEYGEN] FAILED\r\n");
+  }
+
+  UART_Print("\r\n");
 
   /* USER CODE END 2 */
 

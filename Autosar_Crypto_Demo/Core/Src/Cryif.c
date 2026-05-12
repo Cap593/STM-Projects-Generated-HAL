@@ -38,46 +38,31 @@ void CryIf_Init(void)
 Std_ReturnType CryIf_ProcessJob(Crypto_JobType *job)
 {
     const CryIf_ChannelConfigType *channelCfg;
-    uint32_t cryptoKeyId;
+    uint32_t cryptoKeyId = job->keyId;
 
     if (job == NULL)
     {
         return E_NOT_OK;
     }
 
-    /* -----------------------------
-     * Find channel
-     * ----------------------------- */
     channelCfg = CryIf_FindChannel(job->channelId);
-
     if (channelCfg == NULL)
     {
         return E_NOT_OK;
     }
 
-    /* -----------------------------
-     * Map KeyId
-     * ----------------------------- */
     if (job->service == CRYPTO_SERVICE_KEYGENERATE)
     {
-    	if (CryIf_MapKey(job->keyId, &cryptoKeyId) != E_OK)
-    	{
-    		return E_NOT_OK;
-    	}
+        if (CryIf_MapKey(job->keyId, &cryptoKeyId) != E_OK)
+        {
+            return E_NOT_OK;
+        }
+
+        job->keyId = cryptoKeyId;
     }
 
-    /* -----------------------------
-     * Update runtime job
-     * ----------------------------- */
     job->cryptoObjectId = channelCfg->cryptoObjectId;
-
-    /*
-     * Replace virtual KeyId
-     * with Crypto Driver KeyId
-     */
-    job->keyId = cryptoKeyId;
-
-    return Crypto_Hw_ProcessJob(job->cryptoObjectId,job);
+    return Crypto_Hw_ProcessJob(job->cryptoObjectId, job);
 }
 
 Std_ReturnType CryIf_RandomGenerate(Crypto_JobType *job)

@@ -1,6 +1,7 @@
 #include "Crypto_Hw.h"
 #include "mbedtls/ctr_drbg.h"
 #include "mbedtls/entropy.h"
+#include "Crypto_FlashStore.h"
 
 /*
  * This file is intentionally written as a learning scaffold.
@@ -12,6 +13,7 @@ extern RNG_HandleTypeDef hrng;
 static mbedtls_entropy_context entropy;
 static mbedtls_ctr_drbg_context ctr_drbg;
 static uint8_t drbg_initialized = 0;
+static uint8_t test_keyload = 0;
 
 typedef struct
 {
@@ -40,6 +42,7 @@ static const Crypto_Hw_ObjectConfigType *Crypto_Hw_FindObject(uint32_t objectId)
 Crypto_KeySlotType Crypto_KeySlots[] =
 {
     {
+/* SLOT 1 --> SECRET_KEY */
         .keyId = 101u,
         .status = CRYPTO_KEY_INVALID,
         .element =
@@ -49,9 +52,31 @@ Crypto_KeySlotType Crypto_KeySlots[] =
             .length = 0u
         }
     },
-
     {
+/* SLOT 2 --> MASTER_KEY */
         .keyId = 102u,
+        .status = CRYPTO_KEY_INVALID,
+        .element =
+        {
+            .elementId = CRYPTO_KE_KEY_MATERIAL,
+			.data = {0u},
+            .length = 0u
+        }
+    },
+    {
+/* SLOT 3 --> BOOT_MAC_KEY */
+        .keyId = 103u,
+        .status = CRYPTO_KEY_INVALID,
+        .element =
+        {
+            .elementId = CRYPTO_KE_KEY_MATERIAL,
+			.data = {0u},
+            .length = 0u
+        }
+    },
+    {
+/* SLOT 4 --> KEY_1 */
+        .keyId = 104u,
         .status = CRYPTO_KEY_INVALID,
         .element =
         {
@@ -241,6 +266,7 @@ static Std_ReturnType Crypto_GenerateKey_SW(Crypto_KeySlotType *slot,uint32_t ke
 void Crypto_Hw_Init(void)
 {
     Crypto_State[0].initialized = true;
+    Crypto_State[1].initialized = true;
 
     mbedtls_entropy_init(&entropy);
     mbedtls_ctr_drbg_init(&ctr_drbg);
@@ -255,6 +281,48 @@ void Crypto_Hw_Init(void)
     else
     {
         drbg_initialized = 0;
+    }
+
+    /*
+    * Initialize flash store module
+    */
+    Crypto_FlashStore_Init();
+
+    /*
+    * Load persistent flash slots
+    * into RAM key slots
+    */
+    (void)Crypto_Flash_LoadAll(Crypto_KeySlots,CRYPTO_FLASH_SLOT_COUNT);
+
+    /*
+     * Minimal factory SECRET_KEY
+     */
+    if (Crypto_KeySlots[0].status != CRYPTO_KEY_VALID)
+    {
+        uint8_t secretKey[16] =
+        {
+            0x11,0x22,0x33,0x44,
+            0x55,0x66,0x77,0x88,
+            0x99,0xAA,0xBB,0xCC,
+            0xDD,0xEE,0xFF,0x10
+        };
+
+        memcpy(Crypto_KeySlots[0].element.data,
+               secretKey,
+               sizeof(secretKey));
+
+        Crypto_KeySlots[0].element.length =
+            sizeof(secretKey);
+
+        Crypto_KeySlots[0].status =
+            CRYPTO_KEY_VALID;
+
+        /*
+         * Save provisioned key
+         */
+        /*(void)Crypto_Flash_SaveAll(
+                    Crypto_KeySlots,
+                    CRYPTO_FLASH_SLOT_COUNT);*/
     }
 }
 
@@ -412,6 +480,18 @@ Std_ReturnType Crypto_Hw_ProcessJob(uint32_t cryptoObjectId,const Crypto_JobType
         if (*(job->resultLengthPtr) < slot->element.length)
         {
             return E_NOT_OK;
+        }
+
+        /*
+         * Save updated RAM slots
+         * into flash
+         */
+        if(test_keyload == 1)
+        {
+        (void)Crypto_Flash_SaveAll(
+                    Crypto_KeySlots,
+                    CRYPTO_FLASH_SLOT_COUNT);
+        test_keyload = 2;
         }
 
         memcpy(job->resultPtr,
