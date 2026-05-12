@@ -27,12 +27,14 @@ typedef struct
 } Csm_ConfigType;
 
 /* job IDs */
-#define CSM_JOB_ID_HW_RNG      (1001u)
-#define CSM_JOB_ID_SW_RNG      (1002u)
+#define CSM_JOB_ID_HW_RNG      			(1001u)
+#define CSM_JOB_ID_SW_RNG      			(1002u)
 
 /* New key-generation job IDs */
-#define CSM_JOB_ID_HW_KEYGEN    (3001u)
-#define CSM_JOB_ID_SW_KEYGEN    (3002u)
+#define CSM_JOB_ID_HW_KEYGEN    		(3001u)
+#define CSM_JOB_ID_SW_KEYGEN    		(3002u)
+#define CSM_JOB_ID_BOOT_MAC_KEYGEN		(3003u)
+#define CSM_JOB_ID_AES_KEYGEN			(3004u)
 
 extern const Csm_ConfigType Csm_Config;
 

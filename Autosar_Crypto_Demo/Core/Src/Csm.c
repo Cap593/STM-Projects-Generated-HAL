@@ -173,6 +173,25 @@ Std_ReturnType CsmJobKeyGenerate
     }
 }
 
+Std_ReturnType Csm_KeyElementGet(
+    uint32_t keyId,
+    uint32_t keyElementId,
+    uint8_t *keyElementPtr,
+    uint32_t *keyElementLengthPtr)
+{
+    if ((keyElementPtr == NULL) ||
+        (keyElementLengthPtr == NULL))
+    {
+        return E_NOT_OK;
+    }
+
+    return CryIf_KeyElementGet(
+                keyId,
+                keyElementId,
+                keyElementPtr,
+                keyElementLengthPtr);
+}
+
 void Csm_MainFunction(void)
 {
     for (uint32_t i = 0u; i < CSM_JOB_QUEUE_SIZE; ++i)

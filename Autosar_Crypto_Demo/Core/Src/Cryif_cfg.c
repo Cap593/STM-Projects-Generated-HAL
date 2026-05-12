@@ -26,6 +26,14 @@ static const CryIf_KeyMapType CryIf_KeyMap[] =
     {
         .csmKeyId     = 2u,
         .cryptoKeyId  = 102u
+    },
+    {
+        .csmKeyId     = 3u,
+        .cryptoKeyId  = 103u
+    },
+    {
+        .csmKeyId     = 4u,
+        .cryptoKeyId  = 104u
     }
 };
 

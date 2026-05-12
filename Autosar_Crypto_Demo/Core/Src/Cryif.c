@@ -38,46 +38,31 @@ void CryIf_Init(void)
 Std_ReturnType CryIf_ProcessJob(Crypto_JobType *job)
 {
     const CryIf_ChannelConfigType *channelCfg;
-    uint32_t cryptoKeyId;
+    uint32_t cryptoKeyId = job->keyId;
 
     if (job == NULL)
     {
         return E_NOT_OK;
     }
 
-    /* -----------------------------
-     * Find channel
-     * ----------------------------- */
     channelCfg = CryIf_FindChannel(job->channelId);
-
     if (channelCfg == NULL)
     {
         return E_NOT_OK;
     }
 
-    /* -----------------------------
-     * Map KeyId
-     * ----------------------------- */
     if (job->service == CRYPTO_SERVICE_KEYGENERATE)
     {
-    	if (CryIf_MapKey(job->keyId, &cryptoKeyId) != E_OK)
-    	{
-    		return E_NOT_OK;
-    	}
+        if (CryIf_MapKey(job->keyId, &cryptoKeyId) != E_OK)
+        {
+            return E_NOT_OK;
+        }
+
+        job->keyId = cryptoKeyId;
     }
 
-    /* -----------------------------
-     * Update runtime job
-     * ----------------------------- */
     job->cryptoObjectId = channelCfg->cryptoObjectId;
-
-    /*
-     * Replace virtual KeyId
-     * with Crypto Driver KeyId
-     */
-    job->keyId = cryptoKeyId;
-
-    return Crypto_Hw_ProcessJob(job->cryptoObjectId,job);
+    return Crypto_Hw_ProcessJob(job->cryptoObjectId, job);
 }
 
 Std_ReturnType CryIf_RandomGenerate(Crypto_JobType *job)
@@ -87,6 +72,37 @@ Std_ReturnType CryIf_RandomGenerate(Crypto_JobType *job)
         return E_NOT_OK;
     }
     return CryIf_ProcessJob(job);
+}
+
+Std_ReturnType CryIf_KeyElementGet(
+    uint32_t csmKeyId,
+    uint32_t keyElementId,
+    uint8_t *keyElementPtr,
+    uint32_t *keyElementLengthPtr)
+{
+    uint32_t cryptoKeyId;
+
+    if ((keyElementPtr == NULL) ||
+        (keyElementLengthPtr == NULL))
+    {
+        return E_NOT_OK;
+    }
+
+    /*
+     * Map virtual CSM KeyId
+     * to Crypto Driver KeyId
+     */
+    if (CryIf_MapKey(csmKeyId,
+                     &cryptoKeyId) != E_OK)
+    {
+        return E_NOT_OK;
+    }
+
+    return Crypto_Hw_KeyElementGet(
+                cryptoKeyId,
+                keyElementId,
+                keyElementPtr,
+                keyElementLengthPtr);
 }
 
 Std_ReturnType CryIf_RandomSeed(Crypto_JobType *job)

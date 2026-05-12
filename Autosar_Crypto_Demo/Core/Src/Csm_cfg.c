@@ -44,6 +44,28 @@ static const Csm_JobConfigType Csm_Jobs[] =
         .isAsynchronous  = false,
         .keyLength       = 16u,
         .maxResultLength = 16u
+    },
+    {
+        .jobId           = CSM_JOB_ID_BOOT_MAC_KEYGEN,
+        .service         = CRYPTO_SERVICE_KEYGENERATE,
+        .opMode          = CRYPTO_OPERATIONMODE_SINGLECALL,
+        .cryIfChannelId  = CRYIF_CHANNEL_HW,
+        .keyId           = 3u,
+        .targetKeyId     = 0u,
+        .isAsynchronous  = false,
+        .keyLength       = 16u,
+        .maxResultLength = 16u
+    },
+    {
+        .jobId           = CSM_JOB_ID_AES_KEYGEN,
+        .service         = CRYPTO_SERVICE_KEYGENERATE,
+        .opMode          = CRYPTO_OPERATIONMODE_SINGLECALL,
+        .cryIfChannelId  = CRYIF_CHANNEL_HW,
+        .keyId           = 4u,
+        .targetKeyId     = 0u,
+        .isAsynchronous  = false,
+        .keyLength       = 16u,
+        .maxResultLength = 16u
     }
 };
 

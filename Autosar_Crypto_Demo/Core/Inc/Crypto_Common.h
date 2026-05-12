@@ -44,6 +44,12 @@ typedef enum
     CRYPTO_KEY_VALID   = 1u
 } Crypto_KeyStatusType;
 
+typedef enum
+{
+    CRYPTO_KE_KEY_MATERIAL = 0u,
+    CRYPTO_KE_IV           = 1u
+} Crypto_KeyElementIdType;
+
 /* Common job object passed from CSM -> CryIf -> Crypto Driver */
 typedef struct
 {

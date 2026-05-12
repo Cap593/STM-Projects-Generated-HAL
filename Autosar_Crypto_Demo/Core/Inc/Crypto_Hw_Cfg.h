@@ -17,12 +17,6 @@ typedef struct
     const char     *name;
 } Crypto_Hw_ObjectConfigType;
 
-typedef enum
-{
-    CRYPTO_KE_KEY_MATERIAL = 0u,
-    CRYPTO_KE_IV           = 1u
-} Crypto_KeyElementIdType;
-
 typedef struct
 {
     Crypto_KeyElementIdType elementId;

@@ -7,14 +7,14 @@ static const Crypto_Hw_ObjectConfigType Crypto_Objects[] =
         .path                   = CRYPTO_PATH_HW,
         .supportsRandomGenerate = true,
         .supportsRandomSeed     = true,
-        .name                   = "RENESAS_HW_RNG"
+        .name                   = "STM_HW_RNG"
     },
     {
         .objectId               = CRYPTO_SW_OBJECT_RNG,
         .path                   = CRYPTO_PATH_SW,
         .supportsRandomGenerate = true,
         .supportsRandomSeed     = true,
-        .name                   = "SOFTWARE_RNG_FALLBACK"
+        .name                   = "SOFTWARE_RNG_CALLBACK"
     }
 };
 

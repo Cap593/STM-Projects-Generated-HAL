@@ -23,6 +23,7 @@ Std_ReturnType Csm_RandomSeed(uint32_t jobId,
 void Csm_MainFunction(void);
 
 Std_ReturnType CsmJobKeyGenerate(uint32_t jobId,uint8_t *resultPtr,uint32_t *resultLengthPtr);
+Std_ReturnType Csm_KeyElementGet(uint32_t keyId,uint32_t keyElementId,uint8_t *keyElementPtr,uint32_t *keyElementLengthPtr);
 
 #ifdef __cplusplus
 }
