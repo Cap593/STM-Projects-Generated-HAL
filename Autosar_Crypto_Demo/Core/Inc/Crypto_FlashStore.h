@@ -65,4 +65,8 @@ Std_ReturnType Crypto_Flash_SaveAll(const Crypto_KeySlotType *ramSlots,
 
 uint32_t Crypto_Flash_CalcCrc32(const uint8_t *data, uint32_t len);
 
+Std_ReturnType Crypto_Flash_SaveSlot(uint32_t keyId,
+                                     const Crypto_KeySlotType *ramSlots,
+                                     uint32_t ramSlotCount);
+
 #endif /* CRYPTO_FLASHSTORE_H */

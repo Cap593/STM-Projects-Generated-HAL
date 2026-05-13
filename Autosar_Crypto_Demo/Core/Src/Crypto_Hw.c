@@ -13,7 +13,6 @@ extern RNG_HandleTypeDef hrng;
 static mbedtls_entropy_context entropy;
 static mbedtls_ctr_drbg_context ctr_drbg;
 static uint8_t drbg_initialized = 0;
-static uint8_t test_keyload = 0;
 
 typedef struct
 {
@@ -316,13 +315,6 @@ void Crypto_Hw_Init(void)
 
         Crypto_KeySlots[0].status =
             CRYPTO_KEY_VALID;
-
-        /*
-         * Save provisioned key
-         */
-        /*(void)Crypto_Flash_SaveAll(
-                    Crypto_KeySlots,
-                    CRYPTO_FLASH_SLOT_COUNT);*/
     }
 }
 
@@ -378,6 +370,55 @@ Std_ReturnType Crypto_Hw_KeyElementGet(
 
     *keyElementLengthPtr =
         slot->element.length;
+
+    return E_OK;
+}
+
+Std_ReturnType Crypto_Hw_KeyElementSet(uint32_t cryptoKeyId,
+                                       uint32_t keyElementId,
+                                       const uint8_t *keyElementPtr,
+                                       uint32_t keyElementLength)
+{
+    Crypto_KeySlotType *slot;
+
+    if ((keyElementPtr == NULL) || (keyElementLength == 0u))
+    {
+        return E_NOT_OK;
+    }
+
+    /* Keep SECRET_KEY fixed/provisioned */
+    if (cryptoKeyId == 101u)
+    {
+        return E_NOT_OK;
+    }
+
+    if (keyElementId != CRYPTO_KE_KEY_MATERIAL)
+    {
+        return E_NOT_OK;
+    }
+
+    slot = Crypto_FindKeySlot(cryptoKeyId);
+    if (slot == NULL)
+    {
+        return E_NOT_OK;
+    }
+
+    if (keyElementLength > sizeof(slot->element.data))
+    {
+        return E_NOT_OK;
+    }
+
+    slot->element.elementId = keyElementId;
+    memset(slot->element.data, 0, sizeof(slot->element.data));
+    memcpy(slot->element.data, keyElementPtr, keyElementLength);
+    slot->element.length = keyElementLength;
+    slot->status = CRYPTO_KEY_VALID;
+
+    /* Persist the updated slot table to flash */
+    if (Crypto_Flash_SaveSlot(cryptoKeyId,Crypto_KeySlots,CRYPTO_FLASH_SLOT_COUNT) != E_OK)
+    {
+        return E_NOT_OK;
+    }
 
     return E_OK;
 }
@@ -480,18 +521,6 @@ Std_ReturnType Crypto_Hw_ProcessJob(uint32_t cryptoObjectId,const Crypto_JobType
         if (*(job->resultLengthPtr) < slot->element.length)
         {
             return E_NOT_OK;
-        }
-
-        /*
-         * Save updated RAM slots
-         * into flash
-         */
-        if(test_keyload == 1)
-        {
-        (void)Crypto_Flash_SaveAll(
-                    Crypto_KeySlots,
-                    CRYPTO_FLASH_SLOT_COUNT);
-        test_keyload = 2;
         }
 
         memcpy(job->resultPtr,

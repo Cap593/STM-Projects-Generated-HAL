@@ -80,6 +80,8 @@ uint32_t swKeyLength = 16;
 
 uint8_t keyReadBuffer[32];
 uint32_t keyReadLength = sizeof(keyReadBuffer);
+uint8_t test_keylifecycle;
+uint8_t flag_powercycle;
 
 /* USER CODE END PV */
 
@@ -158,7 +160,7 @@ int main(void)
   UART_Print("UART Initialized\r\n");
   UART_Print("Crypto Modules Initialized\r\n");
 
-  UART_Print("\r\n");
+  /*UART_Print("\r\n");
   UART_Print("=== AUTOSAR RNG FLOW TEST ===\r\n");
   UART_Print("\r\n");
 
@@ -190,7 +192,6 @@ int main(void)
 	  UART_Print("[SW RNG] FAILED\r\n");
   }
 
-  /* Process async queue */
   for (int i = 0; i < 5; i++)
   {
 	  Csm_MainFunction();
@@ -202,7 +203,7 @@ int main(void)
 
   UART_Print("\r\n");
 
-  UART_Print("== 🔐 TEST 3: GENERATE KEY using HW RNG : SECRET_KEY ==\r\n");
+  UART_Print("== 🔐 TEST 3: GENERATE KEY using HW RNG : KEY_SLOT1 ==\r\n");
   hwKeyLength = 16;
 
   memset(hwKeyBuffer, 0, sizeof(hwKeyBuffer));
@@ -330,9 +331,52 @@ int main(void)
   else
   {
       UART_Print("[HW KEYGEN] FAILED\r\n");
-  }
+  }*/
 
   UART_Print("\r\n");
+
+  UART_Print("== 🔐 TEST 9: Key Lifecycle Test ==\r\n");
+  if(test_keylifecycle == 1)
+  {
+	  UART_Print("== Before Power cycle ==\r\n");
+	  swKeyLength = 16;
+	  flag_powercycle = 1;
+
+	  if (CsmJobKeyGenerate(TEST_JOB_SW_KEYGEN, swKeyBuffer, &swKeyLength) == E_OK)
+	  {
+		  if (Csm_KeyElementSet(2u, CRYPTO_KE_KEY_MATERIAL, swKeyBuffer, swKeyLength) == E_OK)
+		  {
+			  UART_Print("KEY 2 SET OK\r\n");
+
+			  memset(keyReadBuffer,0,sizeof(keyReadBuffer));
+			  keyReadLength = sizeof(keyReadBuffer);
+			  if (Csm_KeyElementGet(2u,CRYPTO_KE_KEY_MATERIAL,keyReadBuffer,&keyReadLength) == E_OK)
+			  {
+				  UART_Print("[KEY 2 READBACK] SUCCESS\r\n");
+				  UART_Print("Stored Key : ");
+
+				  print_buffer(keyReadBuffer,keyReadLength);
+				  UART_Print("\r\n");
+			  }
+			  else
+			  {
+				  UART_Print("[SW KEY READBACK] FAILED\r\n");
+			  }
+		  }
+	  }
+  }
+  else if(flag_powercycle == 1)
+  {
+	  if (Csm_KeyElementGet(2u,CRYPTO_KE_KEY_MATERIAL,keyReadBuffer,&keyReadLength) == E_OK)
+	  {
+		  UART_Print("== After Power cycle ==\r\n");
+		  UART_Print("[KEY 2 READBACK] SUCCESS\r\n");
+		  UART_Print("Stored Key : ");
+
+		  print_buffer(keyReadBuffer,keyReadLength);
+		  UART_Print("\r\n");
+	  }
+  }
 
   /* USER CODE END 2 */
 

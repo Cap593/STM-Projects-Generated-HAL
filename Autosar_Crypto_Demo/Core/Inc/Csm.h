@@ -24,6 +24,7 @@ void Csm_MainFunction(void);
 
 Std_ReturnType CsmJobKeyGenerate(uint32_t jobId,uint8_t *resultPtr,uint32_t *resultLengthPtr);
 Std_ReturnType Csm_KeyElementGet(uint32_t keyId,uint32_t keyElementId,uint8_t *keyElementPtr,uint32_t *keyElementLengthPtr);
+Std_ReturnType Csm_KeyElementSet(uint32_t keyId,uint32_t keyElementId,const uint8_t *keyElementPtr,uint32_t keyElementLength);
 
 #ifdef __cplusplus
 }
