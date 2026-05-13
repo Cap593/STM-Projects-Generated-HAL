@@ -23,6 +23,10 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
+#include <stdio.h>
+#include <string.h>
+#include "mbedtls/aes.h"
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -47,6 +51,35 @@ UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
 
+uint8_t aes_key[16] =
+{
+    0x2B, 0x7E, 0x15, 0x16,
+    0x28, 0xAE, 0xD2, 0xA6,
+    0xAB, 0xF7, 0x15, 0x88,
+    0x09, 0xCF, 0x4F, 0x3C
+};
+
+uint8_t plaintext[16] =
+{
+    0x32, 0x43, 0xF6, 0xA8,
+    0x88, 0x5A, 0x30, 0x8D,
+    0x31, 0x31, 0x98, 0xA2,
+    0xE0, 0x37, 0x07, 0x34
+};
+
+uint8_t ciphertext[16];
+uint8_t decrypted[16];
+
+typedef uint8_t Std_ReturnType;
+
+#ifndef E_OK
+#define E_OK        ((Std_ReturnType)0u)
+#endif
+
+#ifndef E_NOT_OK
+#define E_NOT_OK    ((Std_ReturnType)1u)
+#endif
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -60,6 +93,93 @@ static void MX_USART2_UART_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+/* Debug print helper */
+void UART_Print(char *msg)
+{
+    HAL_UART_Transmit(&huart2, (uint8_t *)msg, strlen(msg), HAL_MAX_DELAY);
+}
+
+void print_buffer(uint8_t *buf, uint32_t len)
+{
+    char msg[100];
+
+    for (uint32_t i = 0; i < len; i++)
+    {
+        sprintf(msg, "%02X", buf[i]);
+        UART_Print(msg);
+    }
+
+    UART_Print("\r\n");
+}
+
+static void print_hex(const char *label, const uint8_t *buf, uint32_t len)
+{
+    char msg[8];
+
+    UART_Print((char *)label);
+    UART_Print(": ");
+
+    for (uint32_t i = 0; i < len; i++)
+    {
+        sprintf(msg, "%02X", buf[i]);
+        UART_Print(msg);
+    }
+
+    UART_Print("\r\n");
+}
+
+static Std_ReturnType aes_ecb_encrypt_128(const uint8_t key[16],
+                                          const uint8_t input[16],
+                                          uint8_t output[16])
+{
+    mbedtls_aes_context aes;
+    int ret;
+
+    mbedtls_aes_init(&aes);
+
+    ret = mbedtls_aes_setkey_enc(&aes, key, 128);
+    if (ret != 0)
+    {
+        mbedtls_aes_free(&aes);
+        return E_NOT_OK;
+    }
+
+    ret = mbedtls_aes_crypt_ecb(&aes,
+                                MBEDTLS_AES_ENCRYPT,
+                                input,
+                                output);
+
+    mbedtls_aes_free(&aes);
+
+    return (ret == 0) ? E_OK : E_NOT_OK;
+}
+
+static Std_ReturnType aes_ecb_decrypt_128(const uint8_t key[16],
+                                          const uint8_t input[16],
+                                          uint8_t output[16])
+{
+    mbedtls_aes_context aes;
+    int ret;
+
+    mbedtls_aes_init(&aes);
+
+    ret = mbedtls_aes_setkey_dec(&aes, key, 128);
+    if (ret != 0)
+    {
+        mbedtls_aes_free(&aes);
+        return E_NOT_OK;
+    }
+
+    ret = mbedtls_aes_crypt_ecb(&aes,
+                                MBEDTLS_AES_DECRYPT,
+                                input,
+                                output);
+
+    mbedtls_aes_free(&aes);
+
+    return (ret == 0) ? E_OK : E_NOT_OK;
+}
 
 /* USER CODE END 0 */
 
@@ -96,6 +216,38 @@ int main(void)
   MX_USART2_UART_Init();
   MX_MBEDTLS_Init();
   /* USER CODE BEGIN 2 */
+
+  UART_Print("UART Initialized\r\n");
+  UART_Print("\r\n=== AES-128 ECB TEST (mbedTLS) ===\r\n");
+
+  memset(ciphertext, 0, sizeof(ciphertext));
+  memset(decrypted, 0, sizeof(decrypted));
+
+  print_hex("AES KEY", aes_key, sizeof(aes_key));
+  print_hex("PLAINTEXT", plaintext, sizeof(plaintext));
+
+
+  if (aes_ecb_encrypt_128(aes_key, plaintext, ciphertext) == E_OK)
+  {
+      UART_Print("AES ECB ENCRYPT SUCCESS\r\n");
+      print_hex("CIPHERTEXT", ciphertext, sizeof(ciphertext));
+  }
+  else
+  {
+      UART_Print("AES ECB ENCRYPT FAILED\r\n");
+  }
+
+  if (aes_ecb_decrypt_128(aes_key, ciphertext, decrypted) == E_OK)
+  {
+      UART_Print("AES ECB DECRYPT SUCCESS\r\n");
+      print_hex("DECRYPTED", decrypted, sizeof(decrypted));
+  }
+  else
+  {
+      UART_Print("AES ECB DECRYPT FAILED\r\n");
+  }
+
+  UART_Print("\r\n");
 
   /* USER CODE END 2 */
 
