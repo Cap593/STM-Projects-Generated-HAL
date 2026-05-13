@@ -30,6 +30,19 @@ static Std_ReturnType CryIf_MapKey(uint32_t csmKeyId,uint32_t *cryptoKeyId)
     return E_NOT_OK;
 }
 
+static bool CryIf_ServiceUsesKey(Crypto_ServiceType service)
+{
+    switch (service)
+    {
+        case CRYPTO_SERVICE_KEYGENERATE:
+        case CRYPTO_SERVICE_AES_ECB_ENCRYPT:
+        case CRYPTO_SERVICE_AES_ECB_DECRYPT:
+            return true;
+        default:
+            return false;
+    }
+}
+
 void CryIf_Init(void)
 {
     /* Nothing to initialize in this small learning example. */
@@ -51,7 +64,7 @@ Std_ReturnType CryIf_ProcessJob(Crypto_JobType *job)
         return E_NOT_OK;
     }
 
-    if (job->service == CRYPTO_SERVICE_KEYGENERATE)
+    if (CryIf_ServiceUsesKey(job->service) == true)
     {
         if (CryIf_MapKey(job->keyId, &cryptoKeyId) != E_OK)
         {

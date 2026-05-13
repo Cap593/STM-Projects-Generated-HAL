@@ -1,6 +1,7 @@
 #include "Crypto_Hw.h"
 #include "mbedtls/ctr_drbg.h"
 #include "mbedtls/entropy.h"
+#include "mbedtls/aes.h"
 #include "Crypto_FlashStore.h"
 
 /*
@@ -423,6 +424,55 @@ Std_ReturnType Crypto_Hw_KeyElementSet(uint32_t cryptoKeyId,
     return E_OK;
 }
 
+static Std_ReturnType Crypto_AesEcb_ProcessBuffer(const uint8_t *key,
+                                                  uint32_t keyBits,
+                                                  const uint8_t *input,
+                                                  uint32_t inputLength,
+                                                  uint8_t *output,
+                                                  bool encrypt)
+{
+    mbedtls_aes_context aes;
+    int ret;
+
+    if ((key == NULL) || (input == NULL) || (output == NULL))
+    {
+        return E_NOT_OK;
+    }
+
+    if ((inputLength == 0u) || ((inputLength % CRYPTO_AES_BLOCK_SIZE) != 0u))
+    {
+        return E_NOT_OK;
+    }
+
+    mbedtls_aes_init(&aes);
+
+    ret = encrypt ? mbedtls_aes_setkey_enc(&aes, key, keyBits)
+                  : mbedtls_aes_setkey_dec(&aes, key, keyBits);
+
+    if (ret != 0)
+    {
+        mbedtls_aes_free(&aes);
+        return E_NOT_OK;
+    }
+
+    for (uint32_t offset = 0u; offset < inputLength; offset += CRYPTO_AES_BLOCK_SIZE)
+    {
+        ret = mbedtls_aes_crypt_ecb(&aes,
+                                    encrypt ? MBEDTLS_AES_ENCRYPT : MBEDTLS_AES_DECRYPT,
+                                    input + offset,
+                                    output + offset);
+
+        if (ret != 0)
+        {
+            mbedtls_aes_free(&aes);
+            return E_NOT_OK;
+        }
+    }
+
+    mbedtls_aes_free(&aes);
+    return E_OK;
+}
+
 Std_ReturnType Crypto_Hw_ProcessJob(uint32_t cryptoObjectId,const Crypto_JobType *job)
 {
     const Crypto_Hw_ObjectConfigType *obj = Crypto_Hw_FindObject(cryptoObjectId);
@@ -532,6 +582,57 @@ Std_ReturnType Crypto_Hw_ProcessJob(uint32_t cryptoObjectId,const Crypto_JobType
     	}
 
     	return ret;
+    }
+    else if ((job->service == CRYPTO_SERVICE_AES_ECB_ENCRYPT) ||
+             (job->service == CRYPTO_SERVICE_AES_ECB_DECRYPT))
+    {
+        Crypto_KeySlotType *slot;
+        bool encrypt = (job->service == CRYPTO_SERVICE_AES_ECB_ENCRYPT);
+
+        if ((job->inputPtr == NULL) ||
+            (job->outputPtr == NULL) ||
+            (job->outputLengthPtr == NULL))
+        {
+            return E_NOT_OK;
+        }
+
+        if (obj->path != CRYPTO_PATH_SW)
+        {
+            return E_NOT_OK;
+        }
+
+        if ((job->inputLength == 0u) ||
+            ((job->inputLength % CRYPTO_AES_BLOCK_SIZE) != 0u))
+        {
+            return E_NOT_OK;
+        }
+
+        if (*(job->outputLengthPtr) < job->inputLength)
+        {
+            return E_NOT_OK;
+        }
+
+        slot = Crypto_FindKeySlot(job->keyId);
+        if ((slot == NULL) ||
+            (slot->status != CRYPTO_KEY_VALID) ||
+            (slot->element.length != 16u) ||
+            (slot->element.elementId != CRYPTO_KE_KEY_MATERIAL))
+        {
+            return E_NOT_OK;
+        }
+
+        if (Crypto_AesEcb_ProcessBuffer(slot->element.data,
+                                        128u,
+                                        job->inputPtr,
+                                        job->inputLength,
+                                        job->outputPtr,
+                                        encrypt) != E_OK)
+        {
+            return E_NOT_OK;
+        }
+
+        *(job->outputLengthPtr) = job->inputLength;
+        return E_OK;
     }
     else
     {

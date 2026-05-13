@@ -83,6 +83,19 @@ uint32_t keyReadLength = sizeof(keyReadBuffer);
 uint8_t test_keylifecycle;
 uint8_t flag_powercycle;
 
+uint8_t plain[16] =
+{
+    0x32, 0x43, 0xF6, 0xA8,
+    0x88, 0x5A, 0x30, 0x8D,
+    0x31, 0x31, 0x98, 0xA2,
+    0xE0, 0x37, 0x07, 0x34
+};
+
+uint8_t cipher[16];
+uint8_t decrypted[16];
+uint32_t cipherLen = sizeof(cipher);
+uint32_t decryptedLen = sizeof(decrypted);
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -106,6 +119,22 @@ void UART_Print(char *msg)
 void print_buffer(uint8_t *buf, uint32_t len)
 {
     char msg[100];
+
+    for (uint32_t i = 0; i < len; i++)
+    {
+        sprintf(msg, "%02X", buf[i]);
+        UART_Print(msg);
+    }
+
+    UART_Print("\r\n");
+}
+
+static void print_hex(const char *label, const uint8_t *buf, uint32_t len)
+{
+    char msg[8];
+
+    UART_Print((char *)label);
+    UART_Print(": ");
 
     for (uint32_t i = 0; i < len; i++)
     {
@@ -160,8 +189,8 @@ int main(void)
   UART_Print("UART Initialized\r\n");
   UART_Print("Crypto Modules Initialized\r\n");
 
-  /*UART_Print("\r\n");
-  UART_Print("=== AUTOSAR RNG FLOW TEST ===\r\n");
+  UART_Print("\r\n");
+  /*UART_Print("=== AUTOSAR RNG FLOW TEST ===\r\n");
   UART_Print("\r\n");
 
   UART_Print("== 🔹 TEST 1: HW RNG (Synchronous) ==\r\n");
@@ -331,11 +360,11 @@ int main(void)
   else
   {
       UART_Print("[HW KEYGEN] FAILED\r\n");
-  }*/
+  }
 
-  UART_Print("\r\n");
+  UART_Print("\r\n");*/
 
-  UART_Print("== 🔐 TEST 9: Key Lifecycle Test ==\r\n");
+  /*UART_Print("== 🔐 TEST 9: Key Lifecycle Test ==\r\n");
   if(test_keylifecycle == 1)
   {
 	  UART_Print("== Before Power cycle ==\r\n");
@@ -376,7 +405,38 @@ int main(void)
 		  print_buffer(keyReadBuffer,keyReadLength);
 		  UART_Print("\r\n");
 	  }
+  }*/
+
+  UART_Print("== 🔐 TEST : AES ECB Encryption ==\r\n");
+
+  print_hex("Plaintext",plain,sizeof(plain));
+
+  memset(cipher, 0, sizeof(cipher));
+  memset(decrypted, 0, sizeof(decrypted));
+
+  if (Csm_Encrypt(CSM_JOB_ID_AES_ECB_ENC,
+                  CRYPTO_OPERATIONMODE_SINGLECALL,
+                  plain,
+                  sizeof(plain),
+                  cipher,
+                  &cipherLen) == E_OK)
+  {
+      UART_Print("AES ECB ENCRYPT OK\r\n");
+	  print_hex("Ciphertext",cipher,cipherLen);
   }
+
+  if (Csm_Decrypt(CSM_JOB_ID_AES_ECB_DEC,
+                  CRYPTO_OPERATIONMODE_SINGLECALL,
+                  cipher,
+                  cipherLen,
+                  decrypted,
+                  &decryptedLen) == E_OK)
+  {
+      UART_Print("AES ECB DECRYPT OK\r\n");
+	  print_hex("Decrypted Hex",decrypted,decryptedLen);
+  }
+
+  UART_Print("\r\n");
 
   /* USER CODE END 2 */
 

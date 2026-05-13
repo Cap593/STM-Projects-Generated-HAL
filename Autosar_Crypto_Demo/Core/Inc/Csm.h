@@ -25,6 +25,19 @@ void Csm_MainFunction(void);
 Std_ReturnType CsmJobKeyGenerate(uint32_t jobId,uint8_t *resultPtr,uint32_t *resultLengthPtr);
 Std_ReturnType Csm_KeyElementGet(uint32_t keyId,uint32_t keyElementId,uint8_t *keyElementPtr,uint32_t *keyElementLengthPtr);
 Std_ReturnType Csm_KeyElementSet(uint32_t keyId,uint32_t keyElementId,const uint8_t *keyElementPtr,uint32_t keyElementLength);
+Std_ReturnType Csm_Encrypt(uint32_t jobId,
+                           Crypto_OperationModeType mode,
+                           const uint8_t *dataPtr,
+                           uint32_t dataLength,
+                           uint8_t *resultPtr,
+                           uint32_t *resultLengthPtr);
+
+Std_ReturnType Csm_Decrypt(uint32_t jobId,
+                           Crypto_OperationModeType mode,
+                           const uint8_t *dataPtr,
+                           uint32_t dataLength,
+                           uint8_t *resultPtr,
+                           uint32_t *resultLengthPtr);
 
 #ifdef __cplusplus
 }

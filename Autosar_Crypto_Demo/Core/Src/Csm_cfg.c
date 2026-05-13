@@ -66,6 +66,28 @@ static const Csm_JobConfigType Csm_Jobs[] =
         .isAsynchronous  = false,
         .keyLength       = 16u,
         .maxResultLength = 16u
+    },
+    {
+        .jobId           = CSM_JOB_ID_AES_ECB_ENC,
+        .service         = CRYPTO_SERVICE_AES_ECB_ENCRYPT,
+        .opMode          = CRYPTO_OPERATIONMODE_SINGLECALL,
+        .cryIfChannelId  = CRYIF_CHANNEL_SW,
+        .keyId           = 4u,
+        .targetKeyId     = 0u,
+        .isAsynchronous  = false,
+        .keyLength       = 0u,
+        .maxResultLength = 16u
+    },
+    {
+        .jobId           = CSM_JOB_ID_AES_ECB_DEC,
+        .service         = CRYPTO_SERVICE_AES_ECB_DECRYPT,
+        .opMode          = CRYPTO_OPERATIONMODE_SINGLECALL,
+        .cryIfChannelId  = CRYIF_CHANNEL_SW,
+        .keyId           = 4u,
+        .targetKeyId     = 0u,
+        .isAsynchronous  = false,
+        .keyLength       = 0u,
+        .maxResultLength = 16u
     }
 };
 
