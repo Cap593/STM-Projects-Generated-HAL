@@ -192,6 +192,19 @@ Std_ReturnType Csm_KeyElementGet(
                 keyElementLengthPtr);
 }
 
+Std_ReturnType Csm_KeyElementSet(uint32_t keyId,uint32_t keyElementId,const uint8_t *keyElementPtr,uint32_t keyElementLength)
+{
+    if ((keyElementPtr == NULL) || (keyElementLength == 0u))
+    {
+        return E_NOT_OK;
+    }
+
+    return CryIf_KeyElementSet(keyId,
+                               keyElementId,
+                               keyElementPtr,
+                               keyElementLength);
+}
+
 void Csm_MainFunction(void)
 {
     for (uint32_t i = 0u; i < CSM_JOB_QUEUE_SIZE; ++i)

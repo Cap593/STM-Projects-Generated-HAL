@@ -105,6 +105,29 @@ Std_ReturnType CryIf_KeyElementGet(
                 keyElementLengthPtr);
 }
 
+Std_ReturnType CryIf_KeyElementSet(uint32_t csmKeyId,
+                                   uint32_t keyElementId,
+                                   const uint8_t *keyElementPtr,
+                                   uint32_t keyElementLength)
+{
+    uint32_t cryptoKeyId;
+
+    if ((keyElementPtr == NULL) || (keyElementLength == 0u))
+    {
+        return E_NOT_OK;
+    }
+
+    if (CryIf_MapKey(csmKeyId, &cryptoKeyId) != E_OK)
+    {
+        return E_NOT_OK;
+    }
+
+    return Crypto_Hw_KeyElementSet(cryptoKeyId,
+                                   keyElementId,
+                                   keyElementPtr,
+                                   keyElementLength);
+}
+
 Std_ReturnType CryIf_RandomSeed(Crypto_JobType *job)
 {
     if ((job == NULL) || (job->service != CRYPTO_SERVICE_RANDOMSEED))

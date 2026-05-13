@@ -160,6 +160,120 @@ Std_ReturnType Crypto_Flash_WriteSlot(
     return E_OK;
 }
 
+static Std_ReturnType Crypto_Flash_WriteTable(const Crypto_FlashKeyRecordType *records)
+{
+    FLASH_EraseInitTypeDef erase;
+    uint32_t sectorError = 0u;
+    uint32_t address;
+
+    if (records == NULL)
+    {
+        return E_NOT_OK;
+    }
+
+    HAL_FLASH_Unlock();
+
+    erase.TypeErase = FLASH_TYPEERASE_SECTORS;
+    erase.Sector = CRYPTO_FLASH_SECTOR;
+    erase.NbSectors = 1u;
+    erase.VoltageRange = FLASH_VOLTAGE_RANGE_3;
+
+    if (HAL_FLASHEx_Erase(&erase, &sectorError) != HAL_OK)
+    {
+        HAL_FLASH_Lock();
+        return E_NOT_OK;
+    }
+
+    address = CRYPTO_FLASH_BASE_ADDR;
+
+    for (uint32_t i = 0u; i < CRYPTO_FLASH_SLOT_COUNT; i++)
+    {
+        if (Crypto_Flash_ProgramBuffer(address,
+                                       (const uint8_t *)&records[i],
+                                       sizeof(Crypto_FlashKeyRecordType)) != E_OK)
+        {
+            HAL_FLASH_Lock();
+            return E_NOT_OK;
+        }
+
+        address += sizeof(Crypto_FlashKeyRecordType);
+    }
+
+    HAL_FLASH_Lock();
+    return E_OK;
+}
+
+Std_ReturnType Crypto_Flash_SaveSlot(uint32_t keyId,
+                                     const Crypto_KeySlotType *ramSlots,
+                                     uint32_t ramSlotCount)
+{
+    Crypto_FlashKeyRecordType records[CRYPTO_FLASH_SLOT_COUNT];
+    uint32_t slotIdx = 0xFFFFFFFFu;
+
+    if (ramSlots == NULL)
+    {
+        return E_NOT_OK;
+    }
+
+    for (uint32_t i = 0u; i < ramSlotCount; i++)
+    {
+        if (ramSlots[i].keyId == keyId)
+        {
+            slotIdx = i;
+            break;
+        }
+    }
+
+    if (slotIdx == 0xFFFFFFFFu)
+    {
+        return E_NOT_OK;
+    }
+
+    /*
+     * Load current flash table so the other 3 slots are preserved.
+     */
+    for (uint32_t i = 0u; i < CRYPTO_FLASH_SLOT_COUNT; i++)
+    {
+        if (Crypto_Flash_ReadSlot(i + 1u, &records[i]) != E_OK)
+        {
+            memset(&records[i], 0xFF, sizeof(records[i]));
+            records[i].slotId = i + 1u;
+        }
+    }
+
+    /*
+     * Update only the requested logical slot.
+     * Flash write is still table-based because erase is sector-wide.
+     */
+    {
+        const Crypto_KeySlotType *slot = &ramSlots[slotIdx];
+        Crypto_FlashKeyRecordType *rec = &records[slotIdx];
+        uint32_t copyLen;
+
+        memset(rec, 0xFF, sizeof(*rec));
+
+        rec->magic  = CRYPTO_FLASH_MAGIC;
+        rec->slotId = (slotIdx + 1u);
+        rec->keyId  = slot->keyId;
+        rec->keyType = 0u;
+        rec->status = (slot->status == CRYPTO_KEY_VALID) ? 1u : 0u;
+
+        copyLen = slot->element.length;
+        if (copyLen > sizeof(rec->keyMaterial))
+        {
+            copyLen = sizeof(rec->keyMaterial);
+        }
+
+        rec->length = copyLen;
+        memcpy(rec->keyMaterial, slot->element.data, copyLen);
+
+        rec->crc32 = Crypto_Flash_CalcCrc32((const uint8_t *)rec,
+                                            (uint32_t)offsetof(Crypto_FlashKeyRecordType, crc32));
+    }
+
+    return Crypto_Flash_WriteTable(records);
+}
+
 /* reads the flash records into the RAM slots*/
 Std_ReturnType Crypto_Flash_LoadAll(Crypto_KeySlotType *ramSlots,
                                     uint32_t ramSlotCount)
