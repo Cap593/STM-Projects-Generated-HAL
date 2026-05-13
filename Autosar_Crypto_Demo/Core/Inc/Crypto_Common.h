@@ -19,9 +19,11 @@ typedef uint8_t Std_ReturnType;
 /* Generic Crypto service model */
 typedef enum
 {
-    CRYPTO_SERVICE_RANDOMGENERATE = 0u,
-    CRYPTO_SERVICE_RANDOMSEED     = 1u,
-	CRYPTO_SERVICE_KEYGENERATE    = 2u
+    CRYPTO_SERVICE_RANDOMGENERATE  = 0u,
+    CRYPTO_SERVICE_RANDOMSEED      = 1u,
+	CRYPTO_SERVICE_KEYGENERATE     = 2u,
+	CRYPTO_SERVICE_AES_ECB_ENCRYPT = 3u,
+	CRYPTO_SERVICE_AES_ECB_DECRYPT = 4u
 } Crypto_ServiceType;
 
 typedef enum
@@ -65,6 +67,12 @@ typedef struct
     uint8_t                *resultPtr;
     uint32_t               *resultLengthPtr;
 
+    /* Common input/output for crypto services like AES */
+    const uint8_t          *inputPtr;
+    uint32_t                inputLength;
+    uint8_t                *outputPtr;
+    uint32_t               *outputLengthPtr;
+
     const uint8_t          *seedPtr;
     uint32_t                seedLength;
 
@@ -77,6 +85,8 @@ typedef struct
 /* Small helper limits for this learning scaffold */
 #define CRYPTO_MAX_RESULT_SIZE   (32u)
 #define CRYPTO_MAX_SEED_SIZE     (32u)
+
+#define CRYPTO_AES_BLOCK_SIZE   (16u)
 
 #define CSM_JOB_QUEUE_SIZE       (4u)
 

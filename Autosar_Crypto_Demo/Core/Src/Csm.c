@@ -205,6 +205,168 @@ Std_ReturnType Csm_KeyElementSet(uint32_t keyId,uint32_t keyElementId,const uint
                                keyElementLength);
 }
 
+Std_ReturnType Csm_Encrypt(
+    uint32_t jobId,
+    Crypto_OperationModeType mode,
+    const uint8_t *dataPtr,
+    uint32_t dataLength,
+    uint8_t *resultPtr,
+    uint32_t *resultLengthPtr)
+{
+    const Csm_JobConfigType *cfg;
+    Crypto_JobType job;
+
+    /*
+     * Validate pointers
+     */
+    if ((dataPtr == NULL) ||
+        (resultPtr == NULL) ||
+        (resultLengthPtr == NULL))
+    {
+        return E_NOT_OK;
+    }
+
+    /*
+     * ECB first version:
+     * SINGLECALL only
+     */
+    if (mode != CRYPTO_OPERATIONMODE_SINGLECALL)
+    {
+        return E_NOT_OK;
+    }
+
+    /*
+     * ECB requires 16-byte aligned blocks
+     */
+    if ((dataLength == 0u) || ((dataLength % CRYPTO_AES_BLOCK_SIZE) != 0u))
+    {
+        return E_NOT_OK;
+    }
+
+    if (*resultLengthPtr < dataLength)
+    {
+        return E_NOT_OK;
+    }
+
+    /*
+     * Find configured job
+     */
+    cfg = Csm_FindJobConfig(jobId);
+
+    if (cfg == NULL)
+    {
+        return E_NOT_OK;
+    }
+
+    if (cfg->service != CRYPTO_SERVICE_AES_ECB_ENCRYPT)
+    {
+        return E_NOT_OK;
+    }
+
+    /*
+     * Build runtime job
+     */
+    memset(&job,0,sizeof(Crypto_JobType));
+
+    job.jobId = cfg->jobId;
+    job.channelId = cfg->cryIfChannelId;
+    job.keyId = cfg->keyId;
+    job.service = cfg->service;
+    job.opMode = mode;
+    job.inputPtr = dataPtr;
+    job.inputLength = dataLength;
+    job.outputPtr = resultPtr;
+    job.outputLengthPtr = resultLengthPtr;
+
+    /*
+     * Submit to CryIf
+     */
+    return Csm_SubmitToCryIf(&job);
+}
+
+Std_ReturnType Csm_Decrypt(
+    uint32_t jobId,
+    Crypto_OperationModeType mode,
+    const uint8_t *dataPtr,
+    uint32_t dataLength,
+    uint8_t *resultPtr,
+    uint32_t *resultLengthPtr)
+{
+    const Csm_JobConfigType *cfg;
+
+    Crypto_JobType job;
+
+    /*
+     * Validate pointers
+     */
+    if ((dataPtr == NULL) || (resultPtr == NULL) || (resultLengthPtr == NULL))
+    {
+        return E_NOT_OK;
+    }
+
+    /*
+     * ECB first version:
+     * SINGLECALL only
+     */
+    if (mode != CRYPTO_OPERATIONMODE_SINGLECALL)
+    {
+        return E_NOT_OK;
+    }
+
+    /*
+     * ECB requires block-aligned input
+     */
+    if ((dataLength == 0u) ||
+        ((dataLength % CRYPTO_AES_BLOCK_SIZE) != 0u))
+    {
+        return E_NOT_OK;
+    }
+
+    /*
+     * Output buffer size check
+     */
+    if (*resultLengthPtr < dataLength)
+    {
+        return E_NOT_OK;
+    }
+
+    /*
+     * Find configured job
+     */
+    cfg = Csm_FindJobConfig(jobId);
+
+    if (cfg == NULL)
+    {
+        return E_NOT_OK;
+    }
+
+    /*
+     * Validate service type
+     */
+    if (cfg->service != CRYPTO_SERVICE_AES_ECB_DECRYPT)
+    {
+        return E_NOT_OK;
+    }
+
+    /*
+     * Build runtime job
+     */
+    memset(&job,0,sizeof(Crypto_JobType));
+
+    job.jobId = cfg->jobId;
+    job.channelId =cfg->cryIfChannelId;
+    job.keyId = cfg->keyId;
+    job.service = cfg->service;
+    job.opMode = mode;
+    job.inputPtr = dataPtr;
+    job.inputLength = dataLength;
+    job.outputPtr = resultPtr;
+    job.outputLengthPtr = resultLengthPtr;
+
+
+    return Csm_SubmitToCryIf(&job);
+}
+
 void Csm_MainFunction(void)
 {
     for (uint32_t i = 0u; i < CSM_JOB_QUEUE_SIZE; ++i)

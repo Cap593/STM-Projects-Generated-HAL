@@ -36,6 +36,9 @@ typedef struct
 #define CSM_JOB_ID_BOOT_MAC_KEYGEN		(3003u)
 #define CSM_JOB_ID_AES_KEYGEN			(3004u)
 
+#define CSM_JOB_ID_AES_ECB_ENC   		(3005u)
+#define CSM_JOB_ID_AES_ECB_DEC   		(3006u)
+
 extern const Csm_ConfigType Csm_Config;
 
 #endif /* CSM_CFG_H */
