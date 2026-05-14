@@ -23,6 +23,10 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
+#include "mbedtls/sha256.h"
+#include <stdio.h>
+#include <string.h>
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -47,6 +51,9 @@ UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
 
+uint8_t msg[] = "Hello SHA256";
+uint8_t hash[32];
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -60,6 +67,24 @@ static void MX_USART2_UART_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+static void UART_Print(char *msg)
+{
+    HAL_UART_Transmit(&huart2, (uint8_t *)msg, strlen(msg), HAL_MAX_DELAY);
+}
+
+static void print_hex(const char *label, const uint8_t *buf, uint32_t len)
+{
+    char tmp[8];
+    UART_Print((char *)label);
+    UART_Print(": ");
+    for (uint32_t i = 0; i < len; i++)
+    {
+        sprintf(tmp, "%02X", buf[i]);
+        UART_Print(tmp);
+    }
+    UART_Print("\r\n");
+}
 
 /* USER CODE END 0 */
 
@@ -96,6 +121,23 @@ int main(void)
   MX_USART2_UART_Init();
   MX_MBEDTLS_Init();
   /* USER CODE BEGIN 2 */
+
+  UART_Print("\r\n=== SHA-256 TEST ===\r\n");
+  UART_Print("MSG: ");
+  UART_Print((char *)msg);
+  UART_Print("\r\n");
+
+  memset(hash, 0, sizeof(hash));
+
+  if (mbedtls_sha256_ret(msg, strlen((char *)msg), hash, 0) == 0)
+  {
+      UART_Print("SHA256 OK\r\n");
+      print_hex("HASH", hash, sizeof(hash));
+  }
+  else
+  {
+      UART_Print("SHA256 FAILED\r\n");
+  }
 
   /* USER CODE END 2 */
 
