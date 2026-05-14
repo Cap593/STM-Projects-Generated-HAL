@@ -91,10 +91,61 @@ uint8_t plain[16] =
     0xE0, 0x37, 0x07, 0x34
 };
 
+/*
+ * KEY_1 material
+ */
+uint8_t key1Material[16] =
+{
+    0xD1,0xA6,0xF8,0x27,
+    0xDC,0x66,0xDF,0x54,
+    0x65,0xA5,0x88,0x57,
+    0xFE,0xCA,0x97,0x68
+};
+
+/*
+ * CBC IV
+ */
+uint8_t key1Iv[16] =
+{
+    0x00,0x11,0x22,0x33,
+    0x44,0x55,0x66,0x77,
+    0x88,0x99,0xAA,0xBB,
+    0xCC,0xDD,0xEE,0xFF
+};
+
 uint8_t cipher[16];
 uint8_t decrypted[16];
 uint32_t cipherLen = sizeof(cipher);
 uint32_t decryptedLen = sizeof(decrypted);
+
+uint8_t key1Material[16];
+uint8_t key1Iv[16];
+
+uint8_t readKeyBuf[32];
+uint8_t readIvBuf[16];
+
+uint32_t readKeyLen;
+uint32_t readIvLen;
+
+/*CBC test*/
+uint8_t cbcPlain[32] =
+{
+    0x32,0x43,0xF6,0xA8,
+    0x88,0x5A,0x30,0x8D,
+    0x31,0x31,0x98,0xA2,
+    0xE0,0x37,0x07,0x34,
+
+    0x11,0x22,0x33,0x44,
+    0x55,0x66,0x77,0x88,
+    0x99,0xAA,0xBB,0xCC,
+    0xDD,0xEE,0xFF,0x00
+};
+
+uint8_t cbcCipher[32];
+uint8_t cbcDecrypt[32];
+
+uint32_t cipherLencbc = sizeof(cbcCipher);
+uint32_t decryptLen = sizeof(cbcDecrypt);
 
 /* USER CODE END PV */
 
@@ -407,7 +458,7 @@ int main(void)
 	  }
   }*/
 
-  UART_Print("== 🔐 TEST : AES ECB Encryption ==\r\n");
+  /*UART_Print("== 🔐 TEST : AES ECB Encryption ==\r\n");
 
   print_hex("Plaintext",plain,sizeof(plain));
 
@@ -436,7 +487,126 @@ int main(void)
 	  print_hex("Decrypted Hex",decrypted,decryptedLen);
   }
 
+  UART_Print("\r\n");*/
+
+  if(test_keylifecycle == 1)
+  {
+
+	  UART_Print("\r\n");
+	  UART_Print("=== KEY_1 MATERIAL SET ===\r\n");
+
+	  if (Csm_KeyElementSet(
+			  4u,
+			  CRYPTO_KE_KEY_MATERIAL,
+			  key1Material,
+			  sizeof(key1Material)) == E_OK)
+	  {
+		  UART_Print("KEY_1 MATERIAL SET SUCCESS\r\n");
+	  }
+	  else
+	  {
+		  UART_Print("KEY_1 MATERIAL SET FAILED\r\n");
+	  }
+
+	  UART_Print("\r\n");
+	  UART_Print("=== KEY_1 IV SET ===\r\n");
+
+	  if (Csm_KeyElementSet(
+			  4u,
+			  CRYPTO_KE_IV,
+			  key1Iv,
+			  sizeof(key1Iv)) == E_OK)
+	  {
+		  UART_Print("KEY_1 IV SET SUCCESS\r\n");
+	  }
+	  else
+	  {
+		  UART_Print("KEY_1 IV SET FAILED\r\n");
+	  }
+
+	  UART_Print("\r\n");
+	  UART_Print("=== READ KEY_1 MATERIAL ===\r\n");
+
+	  memset(readKeyBuf,
+			 0,
+			 sizeof(readKeyBuf));
+
+	  readKeyLen = sizeof(readKeyBuf);
+
+	  if (Csm_KeyElementGet(
+			  4u,
+			  CRYPTO_KE_KEY_MATERIAL,
+			  readKeyBuf,
+			  &readKeyLen) == E_OK)
+	  {
+		  UART_Print("KEY_1 MATERIAL READ SUCCESS\r\n");
+		  print_buffer(readKeyBuf,
+					   readKeyLen);
+	  }
+	  else
+	  {
+		  UART_Print("KEY_1 MATERIAL READ FAILED\r\n");
+	  }
+
+	  UART_Print("\r\n");
+	  UART_Print("=== READ KEY_1 IV ===\r\n");
+
+	  memset(readIvBuf,
+			 0,
+			 sizeof(readIvBuf));
+
+	  readIvLen = sizeof(readIvBuf);
+
+	  if (Csm_KeyElementGet(
+			  4u,
+			  CRYPTO_KE_IV,
+			  readIvBuf,
+			  &readIvLen) == E_OK)
+	  {
+		  UART_Print("KEY_1 IV READ SUCCESS\r\n");
+		  print_buffer(readIvBuf,
+					   readIvLen);
+	  }
+	  else
+	  {
+		  UART_Print("KEY_1 IV READ FAILED\r\n");
+	  }
+  }
+
   UART_Print("\r\n");
+  UART_Print("=== 🔐 AES CBC TEST ===\r\n");
+
+  memset(cbcCipher, 0, sizeof(cbcCipher));
+  memset(cbcDecrypt, 0, sizeof(cbcDecrypt));
+
+  UART_Print("CBC Plaintext : ");
+  print_buffer(cbcPlain, sizeof(cbcPlain));
+
+  if (Csm_Encrypt(
+          CSM_JOB_ID_AES_CBC_ENC,
+          CRYPTO_OPERATIONMODE_SINGLECALL,
+          cbcPlain,
+          sizeof(cbcPlain),
+          cbcCipher,
+          &cipherLencbc) == E_OK)
+  {
+      UART_Print("AES CBC ENCRYPT OK\r\n");
+      UART_Print("CBC Ciphertext : ");
+      print_buffer(cbcCipher, cipherLencbc);
+  }
+
+  if (Csm_Decrypt(
+          CSM_JOB_ID_AES_CBC_DEC,
+          CRYPTO_OPERATIONMODE_SINGLECALL,
+          cbcCipher,
+		  cipherLencbc,
+          cbcDecrypt,
+          &decryptLen) == E_OK)
+  {
+      UART_Print("AES CBC DECRYPT OK\r\n");
+      UART_Print("CBC Decrypted : ");
+      print_buffer(cbcDecrypt, decryptLen);
+  }
 
   /* USER CODE END 2 */
 

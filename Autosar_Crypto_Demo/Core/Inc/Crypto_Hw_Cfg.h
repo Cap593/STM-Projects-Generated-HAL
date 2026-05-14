@@ -29,6 +29,7 @@ typedef struct
     uint32_t keyId;
     Crypto_KeyStatusType status;
     Crypto_KeyElementType element;
+    Crypto_KeyElementType ivElement;
 } Crypto_KeySlotType;
 
 typedef struct

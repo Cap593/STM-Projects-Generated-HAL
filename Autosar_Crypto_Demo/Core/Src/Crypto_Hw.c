@@ -83,6 +83,12 @@ Crypto_KeySlotType Crypto_KeySlots[] =
             .elementId = CRYPTO_KE_KEY_MATERIAL,
 			.data = {0u},
             .length = 0u
+        },
+        .ivElement =
+        {
+            .elementId = CRYPTO_KE_IV,
+            .data = {0u},
+            .length = 0u
         }
     }
 };
@@ -326,59 +332,53 @@ Std_ReturnType Crypto_Hw_KeyElementGet(
     uint32_t *keyElementLengthPtr)
 {
     Crypto_KeySlotType *slot;
+    Crypto_KeyElementType *elem = NULL;
 
-    if ((keyElementPtr == NULL) ||
-        (keyElementLengthPtr == NULL))
+    if ((keyElementPtr == NULL) || (keyElementLengthPtr == NULL))
     {
         return E_NOT_OK;
     }
 
     slot = Crypto_FindKeySlot(cryptoKeyId);
-
     if (slot == NULL)
     {
         return E_NOT_OK;
     }
 
-    /*
-     * Key must be VALID
-     */
     if (slot->status != CRYPTO_KEY_VALID)
     {
         return E_NOT_OK;
     }
 
-    /*
-     * Verify requested element
-     */
-    if (slot->element.elementId != keyElementId)
+    if (keyElementId == CRYPTO_KE_KEY_MATERIAL)
+    {
+        elem = &slot->element;
+    }
+    else if ((keyElementId == CRYPTO_KE_IV) && (cryptoKeyId == 104u))
+    {
+        elem = &slot->ivElement;
+    }
+    else
     {
         return E_NOT_OK;
     }
 
-    /*
-     * Verify output buffer size
-     */
-    if (*keyElementLengthPtr <
-         slot->element.length)
+    if ((elem->length == 0u) || (*keyElementLengthPtr < elem->length))
     {
         return E_NOT_OK;
     }
 
-    memcpy(keyElementPtr,
-           slot->element.data,
-           slot->element.length);
-
-    *keyElementLengthPtr =
-        slot->element.length;
+    memcpy(keyElementPtr, elem->data, elem->length);
+    *keyElementLengthPtr = elem->length;
 
     return E_OK;
 }
 
-Std_ReturnType Crypto_Hw_KeyElementSet(uint32_t cryptoKeyId,
-                                       uint32_t keyElementId,
-                                       const uint8_t *keyElementPtr,
-                                       uint32_t keyElementLength)
+Std_ReturnType Crypto_Hw_KeyElementSet(
+    uint32_t cryptoKeyId,
+    uint32_t keyElementId,
+    const uint8_t *keyElementPtr,
+    uint32_t keyElementLength)
 {
     Crypto_KeySlotType *slot;
 
@@ -387,15 +387,9 @@ Std_ReturnType Crypto_Hw_KeyElementSet(uint32_t cryptoKeyId,
         return E_NOT_OK;
     }
 
-    /* Keep SECRET_KEY fixed/provisioned */
     if (cryptoKeyId == 101u)
     {
-        return E_NOT_OK;
-    }
-
-    if (keyElementId != CRYPTO_KE_KEY_MATERIAL)
-    {
-        return E_NOT_OK;
+        return E_NOT_OK; /* SECRET_KEY remains fixed/provisioned */
     }
 
     slot = Crypto_FindKeySlot(cryptoKeyId);
@@ -404,19 +398,38 @@ Std_ReturnType Crypto_Hw_KeyElementSet(uint32_t cryptoKeyId,
         return E_NOT_OK;
     }
 
-    if (keyElementLength > sizeof(slot->element.data))
+    if (keyElementId == CRYPTO_KE_KEY_MATERIAL)
+    {
+        if (keyElementLength > sizeof(slot->element.data))
+        {
+            return E_NOT_OK;
+        }
+
+        slot->element.elementId = CRYPTO_KE_KEY_MATERIAL;
+        memset(slot->element.data, 0, sizeof(slot->element.data));
+        memcpy(slot->element.data, keyElementPtr, keyElementLength);
+        slot->element.length = keyElementLength;
+        slot->status = CRYPTO_KEY_VALID;
+    }
+    else if ((keyElementId == CRYPTO_KE_IV) && (cryptoKeyId == 104u))
+    {
+        if (keyElementLength != 16u)
+        {
+            return E_NOT_OK;
+        }
+
+        slot->ivElement.elementId = CRYPTO_KE_IV;
+        memset(slot->ivElement.data, 0, sizeof(slot->ivElement.data));
+        memcpy(slot->ivElement.data, keyElementPtr, keyElementLength);
+        slot->ivElement.length = keyElementLength;
+        slot->status = CRYPTO_KEY_VALID;
+    }
+    else
     {
         return E_NOT_OK;
     }
 
-    slot->element.elementId = keyElementId;
-    memset(slot->element.data, 0, sizeof(slot->element.data));
-    memcpy(slot->element.data, keyElementPtr, keyElementLength);
-    slot->element.length = keyElementLength;
-    slot->status = CRYPTO_KEY_VALID;
-
-    /* Persist the updated slot table to flash */
-    if (Crypto_Flash_SaveSlot(cryptoKeyId,Crypto_KeySlots,CRYPTO_FLASH_SLOT_COUNT) != E_OK)
+    if (Crypto_Flash_SaveSlot(cryptoKeyId, Crypto_KeySlots, CRYPTO_FLASH_SLOT_COUNT) != E_OK)
     {
         return E_NOT_OK;
     }
@@ -471,6 +484,83 @@ static Std_ReturnType Crypto_AesEcb_ProcessBuffer(const uint8_t *key,
 
     mbedtls_aes_free(&aes);
     return E_OK;
+}
+
+static Std_ReturnType Crypto_AesCbc_ProcessBuffer(
+    const uint8_t *key,
+    uint32_t keyBits,
+    const uint8_t *iv,
+    const uint8_t *input,
+    uint32_t inputLength,
+    uint8_t *output,
+    bool encrypt)
+{
+    mbedtls_aes_context aes;
+
+    uint8_t ivLocal[16];
+
+    int ret;
+
+    if ((key == NULL) ||
+        (iv == NULL) ||
+        (input == NULL) ||
+        (output == NULL))
+    {
+        return E_NOT_OK;
+    }
+
+    if ((inputLength == 0u) ||
+        ((inputLength % CRYPTO_AES_BLOCK_SIZE) != 0u))
+    {
+        return E_NOT_OK;
+    }
+
+    /*
+     * CBC modifies IV internally
+     * so use local copy
+     */
+    memcpy(ivLocal,
+           iv,
+           16u);
+
+    mbedtls_aes_init(&aes);
+
+    if (encrypt)
+    {
+        ret = mbedtls_aes_setkey_enc(
+                    &aes,
+                    key,
+                    keyBits);
+    }
+    else
+    {
+        ret = mbedtls_aes_setkey_dec(
+                    &aes,
+                    key,
+                    keyBits);
+    }
+
+    if (ret != 0)
+    {
+        mbedtls_aes_free(&aes);
+        return E_NOT_OK;
+    }
+
+    ret = mbedtls_aes_crypt_cbc(
+                &aes,
+                encrypt ?
+                MBEDTLS_AES_ENCRYPT :
+                MBEDTLS_AES_DECRYPT,
+                inputLength,
+                ivLocal,
+                input,
+                output);
+
+    mbedtls_aes_free(&aes);
+
+    return (ret == 0) ?
+            E_OK :
+            E_NOT_OK;
 }
 
 Std_ReturnType Crypto_Hw_ProcessJob(uint32_t cryptoObjectId,const Crypto_JobType *job)
@@ -632,6 +722,69 @@ Std_ReturnType Crypto_Hw_ProcessJob(uint32_t cryptoObjectId,const Crypto_JobType
         }
 
         *(job->outputLengthPtr) = job->inputLength;
+        return E_OK;
+    }
+    else if ((job->service ==
+              CRYPTO_SERVICE_AES_CBC_ENCRYPT) ||
+
+             (job->service ==
+              CRYPTO_SERVICE_AES_CBC_DECRYPT))
+    {
+        Crypto_KeySlotType *slot;
+
+        bool encrypt;
+
+        encrypt =
+            (job->service ==
+             CRYPTO_SERVICE_AES_CBC_ENCRYPT);
+
+        if ((job->inputPtr == NULL) ||
+            (job->outputPtr == NULL) ||
+            (job->outputLengthPtr == NULL))
+        {
+            return E_NOT_OK;
+        }
+
+        if ((job->inputLength == 0u) ||
+            ((job->inputLength %
+              CRYPTO_AES_BLOCK_SIZE) != 0u))
+        {
+            return E_NOT_OK;
+        }
+
+        slot = Crypto_FindKeySlot(job->keyId);
+
+        if ((slot == NULL) ||
+            (slot->status != CRYPTO_KEY_VALID))
+        {
+            return E_NOT_OK;
+        }
+
+        /*
+         * KEY_1 must contain:
+         * KEY_MATERIAL + IV
+         */
+        if ((slot->element.length != 16u) ||
+            (slot->ivElement.length != 16u))
+        {
+            return E_NOT_OK;
+        }
+
+        if (Crypto_AesCbc_ProcessBuffer(
+                slot->element.data,
+                128u,
+                slot->ivElement.data,
+                job->inputPtr,
+                job->inputLength,
+                job->outputPtr,
+                encrypt) != E_OK)
+        {
+            return E_NOT_OK;
+        }
+
+        *(job->outputLengthPtr) =
+            job->inputLength;
+
         return E_OK;
     }
     else
