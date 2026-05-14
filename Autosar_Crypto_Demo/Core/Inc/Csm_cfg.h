@@ -41,6 +41,9 @@ typedef struct
 #define CSM_JOB_ID_AES_CBC_ENC   		(3007u)
 #define CSM_JOB_ID_AES_CBC_DEC   		(3008u)
 
+#define CSM_JOB_ID_CMAC_GEN   			(3009u)
+#define CSM_JOB_ID_CMAC_VER   			(3010u)
+
 extern const Csm_ConfigType Csm_Config;
 
 #endif /* CSM_CFG_H */

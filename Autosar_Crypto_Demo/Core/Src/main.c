@@ -147,6 +147,20 @@ uint8_t cbcDecrypt[32];
 uint32_t cipherLencbc = sizeof(cbcCipher);
 uint32_t decryptLen = sizeof(cbcDecrypt);
 
+//CMAC
+
+uint8_t cmacMsg[] =
+{
+    0x32, 0x43, 0xF6, 0xA8,
+    0x88, 0x5A, 0x30, 0x8D,
+    0x31, 0x31, 0x98, 0xA2,
+    0xE0, 0x37, 0x07, 0x34
+};
+
+uint8_t cmacTag[16];
+uint32_t cmacTagLen = sizeof(cmacTag);
+
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -489,7 +503,7 @@ int main(void)
 
   UART_Print("\r\n");*/
 
-  if(test_keylifecycle == 1)
+  /*if(test_keylifecycle == 1)
   {
 
 	  UART_Print("\r\n");
@@ -606,7 +620,42 @@ int main(void)
       UART_Print("AES CBC DECRYPT OK\r\n");
       UART_Print("CBC Decrypted : ");
       print_buffer(cbcDecrypt, decryptLen);
+  }*/
+
+  UART_Print("\r\n=== AUTOSAR CMAC TEST ===\r\n");
+
+  memset(cmacTag, 0, sizeof(cmacTag));
+
+  if (Csm_MacGenerate(CSM_JOB_ID_CMAC_GEN,
+                      CRYPTO_OPERATIONMODE_SINGLECALL,
+                      cmacMsg,
+                      sizeof(cmacMsg),
+                      cmacTag,
+                      &cmacTagLen) == E_OK)
+  {
+      UART_Print("CMAC GENERATE OK\r\n");
+      print_hex("CMAC Tag",cmacTag, cmacTagLen);
   }
+  else
+  {
+      UART_Print("CMAC GENERATE FAILED\r\n");
+  }
+
+  if (Csm_MacVerify(CSM_JOB_ID_CMAC_VER,
+                    CRYPTO_OPERATIONMODE_SINGLECALL,
+                    cmacMsg,
+                    sizeof(cmacMsg),
+                    cmacTag,
+                    cmacTagLen) == E_OK)
+  {
+	  print_hex("Verified CMAC Tag",cmacTag, cmacTagLen);
+      UART_Print("CMAC VERIFY OK\r\n");
+  }
+  else
+  {
+      UART_Print("CMAC VERIFY FAILED\r\n");
+  }
+
 
   /* USER CODE END 2 */
 
