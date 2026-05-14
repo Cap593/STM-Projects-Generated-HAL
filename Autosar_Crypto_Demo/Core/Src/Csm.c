@@ -258,7 +258,7 @@ Std_ReturnType Csm_Encrypt(
         return E_NOT_OK;
     }
 
-    if (cfg->service != CRYPTO_SERVICE_AES_ECB_ENCRYPT)
+    if ((cfg->service != CRYPTO_SERVICE_AES_ECB_ENCRYPT) && (cfg->service != CRYPTO_SERVICE_AES_CBC_ENCRYPT))
     {
         return E_NOT_OK;
     }
@@ -343,7 +343,7 @@ Std_ReturnType Csm_Decrypt(
     /*
      * Validate service type
      */
-    if (cfg->service != CRYPTO_SERVICE_AES_ECB_DECRYPT)
+    if ((cfg->service != CRYPTO_SERVICE_AES_ECB_DECRYPT) && (cfg->service != CRYPTO_SERVICE_AES_CBC_DECRYPT))
     {
         return E_NOT_OK;
     }

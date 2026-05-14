@@ -11,6 +11,125 @@
 
 static uint32_t s_FlashSequence = 0u;
 
+static Std_ReturnType Crypto_Flash_ProgramBuffer(uint32_t address,
+                                                 const uint8_t *data,
+                                                 uint32_t length)
+{
+    uint32_t word = 0xFFFFFFFFu;
+
+    if ((data == NULL) || (length == 0u))
+    {
+        return E_NOT_OK;
+    }
+
+    for (uint32_t i = 0u; i < length; i += 4u)
+    {
+        word = 0xFFFFFFFFu;
+        memcpy(&word, &data[i], ((length - i) >= 4u) ? 4u : (length - i));
+
+        if (HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, address + i, word) != HAL_OK)
+        {
+            return E_NOT_OK;
+        }
+    }
+
+    return E_OK;
+}
+
+static void Crypto_Flash_FillBlankRecord(Crypto_FlashKeyRecordType *rec, uint32_t slotId)
+{
+    memset(rec, 0xFF, sizeof(*rec));
+    rec->slotId = slotId;
+    rec->magic  = 0xFFFFFFFFu;
+    rec->keyId  = 0xFFFFFFFFu;
+}
+
+static void Crypto_Flash_BuildRecordFromSlot(uint32_t slotId,
+                                             const Crypto_KeySlotType *slot,
+                                             Crypto_FlashKeyRecordType *rec)
+{
+    uint32_t copyLen;
+    uint32_t ivLen;
+
+    memset(rec, 0, sizeof(*rec));
+
+    rec->magic   = CRYPTO_FLASH_MAGIC;
+    rec->slotId  = slotId;
+    rec->keyId   = slot->keyId;
+    rec->keyType = 0u;
+    rec->status  = (slot->status == CRYPTO_KEY_VALID) ? 1u : 0u;
+
+    copyLen = slot->element.length;
+    if (copyLen > sizeof(rec->keyMaterial))
+    {
+        copyLen = sizeof(rec->keyMaterial);
+    }
+    rec->keyLength = copyLen;
+    memcpy(rec->keyMaterial, slot->element.data, copyLen);
+
+    if (slot->keyId == 104u)
+    {
+        ivLen = slot->ivElement.length;
+        if (ivLen > sizeof(rec->iv))
+        {
+            ivLen = sizeof(rec->iv);
+        }
+        rec->ivLength = ivLen;
+        memcpy(rec->iv, slot->ivElement.data, ivLen);
+    }
+    else
+    {
+        rec->ivLength = 0u;
+        memset(rec->iv, 0, sizeof(rec->iv));
+    }
+
+    rec->crc32 = Crypto_Flash_CalcCrc32((const uint8_t *)rec,
+                                        (uint32_t)offsetof(Crypto_FlashKeyRecordType, crc32));
+}
+
+static Std_ReturnType Crypto_Flash_WriteTable(const Crypto_FlashKeyRecordType *records)
+{
+    FLASH_EraseInitTypeDef erase;
+    uint32_t sectorError = 0u;
+    uint32_t address;
+
+    if (records == NULL)
+    {
+        return E_NOT_OK;
+    }
+
+    HAL_FLASH_Unlock();
+
+    erase.TypeErase = FLASH_TYPEERASE_SECTORS;
+    erase.Sector = CRYPTO_FLASH_SECTOR;
+    erase.NbSectors = 1u;
+    erase.VoltageRange = FLASH_VOLTAGE_RANGE_3;
+
+    if (HAL_FLASHEx_Erase(&erase, &sectorError) != HAL_OK)
+    {
+        HAL_FLASH_Lock();
+        return E_NOT_OK;
+    }
+
+    address = CRYPTO_FLASH_BASE_ADDR;
+
+    for (uint32_t i = 0u; i < CRYPTO_FLASH_SLOT_COUNT; i++)
+    {
+        if (Crypto_Flash_ProgramBuffer(address,
+                                       (const uint8_t *)&records[i],
+                                       sizeof(Crypto_FlashKeyRecordType)) != E_OK)
+        {
+            HAL_FLASH_Lock();
+            return E_NOT_OK;
+        }
+
+        address += sizeof(Crypto_FlashKeyRecordType);
+    }
+
+    HAL_FLASH_Lock();
+    return E_OK;
+}
+
 uint32_t Crypto_Flash_CalcCrc32(const uint8_t *data, uint32_t len)
 {
     uint32_t crc = 0xFFFFFFFFu;
@@ -45,31 +164,6 @@ void Crypto_FlashStore_Init(void)
     s_FlashSequence = 0u;
 }
 
-static Std_ReturnType Crypto_Flash_ProgramBuffer(uint32_t address,
-                                                 const uint8_t *data,
-                                                 uint32_t length)
-{
-    uint32_t word = 0xFFFFFFFFu;
-
-    if ((data == NULL) || (length == 0u))
-    {
-        return E_NOT_OK;
-    }
-
-    for (uint32_t i = 0u; i < length; i += 4u)
-    {
-        word = 0xFFFFFFFFu;
-        memcpy(&word, &data[i], ((length - i) >= 4u) ? 4u : (length - i));
-
-        if (HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, address + i, word) != HAL_OK)
-        {
-            return E_NOT_OK;
-        }
-    }
-
-    return E_OK;
-}
-
 Std_ReturnType Crypto_Flash_ReadSlot(uint32_t slotId,
                                      Crypto_FlashKeyRecordType *outRec)
 {
@@ -94,12 +188,16 @@ Std_ReturnType Crypto_Flash_ReadSlot(uint32_t slotId,
         return E_NOT_OK;
     }
 
-    if (outRec->length > sizeof(outRec->keyMaterial))
+    if (outRec->keyLength > sizeof(outRec->keyMaterial))
     {
         return E_NOT_OK;
     }
 
-    /* Validate CRC */
+    if (outRec->ivLength > sizeof(outRec->iv))
+    {
+        return E_NOT_OK;
+    }
+
     {
         uint32_t crc = Crypto_Flash_CalcCrc32((const uint8_t *)outRec,
                                              (uint32_t)offsetof(Crypto_FlashKeyRecordType, crc32));
@@ -160,55 +258,13 @@ Std_ReturnType Crypto_Flash_WriteSlot(
     return E_OK;
 }
 
-static Std_ReturnType Crypto_Flash_WriteTable(const Crypto_FlashKeyRecordType *records)
-{
-    FLASH_EraseInitTypeDef erase;
-    uint32_t sectorError = 0u;
-    uint32_t address;
-
-    if (records == NULL)
-    {
-        return E_NOT_OK;
-    }
-
-    HAL_FLASH_Unlock();
-
-    erase.TypeErase = FLASH_TYPEERASE_SECTORS;
-    erase.Sector = CRYPTO_FLASH_SECTOR;
-    erase.NbSectors = 1u;
-    erase.VoltageRange = FLASH_VOLTAGE_RANGE_3;
-
-    if (HAL_FLASHEx_Erase(&erase, &sectorError) != HAL_OK)
-    {
-        HAL_FLASH_Lock();
-        return E_NOT_OK;
-    }
-
-    address = CRYPTO_FLASH_BASE_ADDR;
-
-    for (uint32_t i = 0u; i < CRYPTO_FLASH_SLOT_COUNT; i++)
-    {
-        if (Crypto_Flash_ProgramBuffer(address,
-                                       (const uint8_t *)&records[i],
-                                       sizeof(Crypto_FlashKeyRecordType)) != E_OK)
-        {
-            HAL_FLASH_Lock();
-            return E_NOT_OK;
-        }
-
-        address += sizeof(Crypto_FlashKeyRecordType);
-    }
-
-    HAL_FLASH_Lock();
-    return E_OK;
-}
-
 Std_ReturnType Crypto_Flash_SaveSlot(uint32_t keyId,
                                      const Crypto_KeySlotType *ramSlots,
                                      uint32_t ramSlotCount)
 {
     Crypto_FlashKeyRecordType records[CRYPTO_FLASH_SLOT_COUNT];
-    uint32_t slotIdx = 0xFFFFFFFFu;
+    const Crypto_KeySlotType *slot = NULL;
+    uint32_t slotIndex = 0xFFFFFFFFu;
 
     if (ramSlots == NULL)
     {
@@ -219,57 +275,26 @@ Std_ReturnType Crypto_Flash_SaveSlot(uint32_t keyId,
     {
         if (ramSlots[i].keyId == keyId)
         {
-            slotIdx = i;
+            slot = &ramSlots[i];
+            slotIndex = i;
             break;
         }
     }
 
-    if (slotIdx == 0xFFFFFFFFu)
+    if ((slot == NULL) || (slotIndex >= CRYPTO_FLASH_SLOT_COUNT))
     {
         return E_NOT_OK;
     }
 
-    /*
-     * Load current flash table so the other 3 slots are preserved.
-     */
     for (uint32_t i = 0u; i < CRYPTO_FLASH_SLOT_COUNT; i++)
     {
         if (Crypto_Flash_ReadSlot(i + 1u, &records[i]) != E_OK)
         {
-            memset(&records[i], 0xFF, sizeof(records[i]));
-            records[i].slotId = i + 1u;
+            Crypto_Flash_FillBlankRecord(&records[i], i + 1u);
         }
     }
 
-    /*
-     * Update only the requested logical slot.
-     * Flash write is still table-based because erase is sector-wide.
-     */
-    {
-        const Crypto_KeySlotType *slot = &ramSlots[slotIdx];
-        Crypto_FlashKeyRecordType *rec = &records[slotIdx];
-        uint32_t copyLen;
-
-        memset(rec, 0xFF, sizeof(*rec));
-
-        rec->magic  = CRYPTO_FLASH_MAGIC;
-        rec->slotId = (slotIdx + 1u);
-        rec->keyId  = slot->keyId;
-        rec->keyType = 0u;
-        rec->status = (slot->status == CRYPTO_KEY_VALID) ? 1u : 0u;
-
-        copyLen = slot->element.length;
-        if (copyLen > sizeof(rec->keyMaterial))
-        {
-            copyLen = sizeof(rec->keyMaterial);
-        }
-
-        rec->length = copyLen;
-        memcpy(rec->keyMaterial, slot->element.data, copyLen);
-
-        rec->crc32 = Crypto_Flash_CalcCrc32((const uint8_t *)rec,
-                                            (uint32_t)offsetof(Crypto_FlashKeyRecordType, crc32));
-    }
+    Crypto_Flash_BuildRecordFromSlot(slotIndex + 1u, slot, &records[slotIndex]);
 
     return Crypto_Flash_WriteTable(records);
 }
@@ -281,6 +306,7 @@ Std_ReturnType Crypto_Flash_LoadAll(Crypto_KeySlotType *ramSlots,
     Crypto_FlashKeyRecordType rec;
     Crypto_KeySlotType *slot;
     uint32_t copyLen;
+    uint32_t ivLen;
 
     if (ramSlots == NULL)
     {
@@ -298,17 +324,27 @@ Std_ReturnType Crypto_Flash_LoadAll(Crypto_KeySlotType *ramSlots,
                 slot->keyId = rec.keyId;
                 slot->status = (rec.status != 0u) ? CRYPTO_KEY_VALID : CRYPTO_KEY_INVALID;
 
-                /* Minimal version: one key material element only */
+                /* KEY_MATERIAL */
                 slot->element.elementId = CRYPTO_KE_KEY_MATERIAL;
-                copyLen = rec.length;
+                copyLen = rec.keyLength;
                 if (copyLen > sizeof(slot->element.data))
                 {
                     copyLen = sizeof(slot->element.data);
                 }
-
                 memset(slot->element.data, 0, sizeof(slot->element.data));
                 memcpy(slot->element.data, rec.keyMaterial, copyLen);
                 slot->element.length = copyLen;
+
+                /* IV only for KEY_1 */
+                slot->ivElement.elementId = CRYPTO_KE_IV;
+                ivLen = rec.ivLength;
+                if (ivLen > sizeof(slot->ivElement.data))
+                {
+                    ivLen = sizeof(slot->ivElement.data);
+                }
+                memset(slot->ivElement.data, 0, sizeof(slot->ivElement.data));
+                memcpy(slot->ivElement.data, rec.iv, ivLen);
+                slot->ivElement.length = ivLen;
             }
         }
     }
@@ -316,101 +352,22 @@ Std_ReturnType Crypto_Flash_LoadAll(Crypto_KeySlotType *ramSlots,
     return E_OK;
 }
 
-Std_ReturnType Crypto_Flash_SaveAll(
-    const Crypto_KeySlotType *ramSlots,
-    uint32_t ramSlotCount)
+Std_ReturnType Crypto_Flash_SaveAll(const Crypto_KeySlotType *ramSlots,
+                                    uint32_t ramSlotCount)
 {
-    FLASH_EraseInitTypeDef erase;
+    Crypto_FlashKeyRecordType records[CRYPTO_FLASH_SLOT_COUNT];
 
-    uint32_t sectorError = 0u;
-
-    Crypto_FlashKeyRecordType rec;
-
-    uint32_t copyLen;
-
-    if (ramSlots == NULL)
+    if ((ramSlots == NULL) || (ramSlotCount < CRYPTO_FLASH_SLOT_COUNT))
     {
         return E_NOT_OK;
     }
 
-    /*
-     * STEP 1
-     * Erase flash sector ONCE
-     */
-    HAL_FLASH_Unlock();
-
-    erase.TypeErase = FLASH_TYPEERASE_SECTORS;
-    erase.Sector = CRYPTO_FLASH_SECTOR;
-    erase.NbSectors = 1u;
-    erase.VoltageRange = FLASH_VOLTAGE_RANGE_3;
-
-    if (HAL_FLASHEx_Erase(
-            &erase,
-            &sectorError) != HAL_OK)
+    for (uint32_t i = 0u; i < CRYPTO_FLASH_SLOT_COUNT; i++)
     {
-        HAL_FLASH_Lock();
-        return E_NOT_OK;
+        Crypto_Flash_BuildRecordFromSlot(i + 1u, &ramSlots[i], &records[i]);
     }
 
-    /*
-     * STEP 2
-     * Write ALL slot records
-     */
-    for (uint32_t i = 0u;
-         i < ramSlotCount;
-         i++)
-    {
-        memset(&rec,
-               0xFF,
-               sizeof(Crypto_FlashKeyRecordType));
-
-        rec.slotId = i + 1u;
-
-        /*
-         * IMPORTANT:
-         * Keep real Crypto Driver key ID
-         */
-        rec.keyId = ramSlots[i].keyId;
-
-        rec.keyType = 0u;
-
-        rec.status =
-            (ramSlots[i].status ==
-             CRYPTO_KEY_VALID)
-             ? 1u
-             : 0u;
-
-        copyLen =
-            ramSlots[i].element.length;
-
-        if (copyLen >
-            sizeof(rec.keyMaterial))
-        {
-            copyLen =
-                sizeof(rec.keyMaterial);
-        }
-
-        rec.length = copyLen;
-
-        memcpy(rec.keyMaterial,
-               ramSlots[i].element.data,
-               copyLen);
-
-        /*
-         * Write this slot record
-         */
-        if (Crypto_Flash_WriteSlot(
-                rec.slotId,
-                &rec) != E_OK)
-        {
-            HAL_FLASH_Lock();
-            return E_NOT_OK;
-        }
-    }
-
-    HAL_FLASH_Lock();
-
-    return E_OK;
+    return Crypto_Flash_WriteTable(records);
 }
 
 
