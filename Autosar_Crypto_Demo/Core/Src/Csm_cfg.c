@@ -110,7 +110,27 @@ static const Csm_JobConfigType Csm_Jobs[] =
         .isAsynchronous  = false,
         .keyLength       = 0u,
         .maxResultLength = 32u
-    }
+    },
+	{
+	    .jobId           = CSM_JOB_ID_CMAC_GEN,
+	    .service         = CRYPTO_SERVICE_CMAC_GENERATE,
+	    .cryIfChannelId  = CRYIF_CHANNEL_SW,
+	    .keyId           = 4u,
+	    .targetKeyId     = 0u,
+	    .isAsynchronous  = false,
+	    .keyLength       = 0u,
+	    .maxResultLength = 16u
+	},
+	{
+	    .jobId           = CSM_JOB_ID_CMAC_VER,
+	    .service         = CRYPTO_SERVICE_CMAC_VERIFY,
+	    .cryIfChannelId  = CRYIF_CHANNEL_SW,
+	    .keyId           = 4u,
+	    .targetKeyId     = 0u,
+	    .isAsynchronous  = false,
+	    .keyLength       = 0u,
+	    .maxResultLength = 16u
+	}
 };
 
 const Csm_ConfigType Csm_Config =

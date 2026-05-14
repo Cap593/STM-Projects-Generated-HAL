@@ -17,15 +17,18 @@ typedef uint8_t Std_ReturnType;
 #endif
 
 /* Generic Crypto service model */
+
 typedef enum
 {
-    CRYPTO_SERVICE_RANDOMGENERATE  = 0u,
-    CRYPTO_SERVICE_RANDOMSEED      = 1u,
-	CRYPTO_SERVICE_KEYGENERATE     = 2u,
-	CRYPTO_SERVICE_AES_ECB_ENCRYPT = 3u,
-	CRYPTO_SERVICE_AES_ECB_DECRYPT = 4u,
-	CRYPTO_SERVICE_AES_CBC_ENCRYPT = 5u,
-	CRYPTO_SERVICE_AES_CBC_DECRYPT = 6u
+    CRYPTO_SERVICE_RANDOMGENERATE     = 0u,
+    CRYPTO_SERVICE_RANDOMSEED         = 1u,
+    CRYPTO_SERVICE_KEYGENERATE        = 2u,
+    CRYPTO_SERVICE_AES_ECB_ENCRYPT    = 3u,
+    CRYPTO_SERVICE_AES_ECB_DECRYPT    = 4u,
+    CRYPTO_SERVICE_AES_CBC_ENCRYPT    = 5u,
+    CRYPTO_SERVICE_AES_CBC_DECRYPT    = 6u,
+    CRYPTO_SERVICE_CMAC_GENERATE      = 7u,
+    CRYPTO_SERVICE_CMAC_VERIFY        = 8u
 } Crypto_ServiceType;
 
 typedef enum
@@ -57,32 +60,30 @@ typedef enum
 /* Common job object passed from CSM -> CryIf -> Crypto Driver */
 typedef struct
 {
-    uint32_t                jobId;          /* CSM job ID */
-    uint32_t                channelId;      /* CryIf channel selected by CSM config */
-    uint32_t                cryptoObjectId; /* Crypto driver object selected by CryIf */
-    uint32_t                keyId;          /* Key reference used by key-management jobs. This is a handle/reference, not the actual key bytes */
-    uint32_t                targetKeyId;	/* for key copy / key derive flows, one job may need a second key reference. */
-    Crypto_ServiceType      service;
+    uint32_t                 jobId;
+    uint32_t                 channelId;
+    uint32_t                 cryptoObjectId;
+    uint32_t                 keyId;
+    uint32_t                 targetKeyId;
+    Crypto_ServiceType       service;
     Crypto_OperationModeType opMode;
 
-    /* For RNG */
-    uint8_t                *resultPtr;
-    uint32_t               *resultLengthPtr;
+    uint8_t                 *resultPtr;        /* output for encrypt / CMAC generate */
+    uint32_t                *resultLengthPtr;
 
-    /* Common input/output for crypto services like AES */
-    const uint8_t          *inputPtr;
-    uint32_t                inputLength;
-    uint8_t                *outputPtr;
-    uint32_t               *outputLengthPtr;
+    const uint8_t           *inputPtr;         /* plaintext / message */
+    uint32_t                 inputLength;
+    uint8_t                 *outputPtr;        /* ciphertext / CMAC output */
+    uint32_t                *outputLengthPtr;
 
-    const uint8_t          *seedPtr;
-    uint32_t                seedLength;
+    const uint8_t           *macPtr;           /* expected MAC for verify */
+    uint32_t                 macLength;
 
-    /* Used by key generation jobs */
-    uint32_t                keyLength;
+    const uint8_t           *seedPtr;
+    uint32_t                 seedLength;
 
+    uint32_t                 keyLength;
 } Crypto_JobType;
-
 
 /* Small helper limits for this learning scaffold */
 #define CRYPTO_MAX_RESULT_SIZE   (32u)

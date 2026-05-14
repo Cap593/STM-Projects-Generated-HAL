@@ -39,6 +39,8 @@ static bool CryIf_ServiceUsesKey(Crypto_ServiceType service)
         case CRYPTO_SERVICE_AES_ECB_DECRYPT:
         case CRYPTO_SERVICE_AES_CBC_ENCRYPT:
         case CRYPTO_SERVICE_AES_CBC_DECRYPT:
+        case CRYPTO_SERVICE_CMAC_GENERATE:
+        case CRYPTO_SERVICE_CMAC_VERIFY:
             return true;
         default:
             return false;

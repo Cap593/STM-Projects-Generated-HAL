@@ -367,6 +367,101 @@ Std_ReturnType Csm_Decrypt(
     return Csm_SubmitToCryIf(&job);
 }
 
+Std_ReturnType Csm_MacGenerate(uint32_t jobId,
+                               Crypto_OperationModeType mode,
+                               const uint8_t *dataPtr,
+                               uint32_t dataLength,
+                               uint8_t *macPtr,
+                               uint32_t *macLengthPtr)
+{
+    const Csm_JobConfigType *cfg;
+    Crypto_JobType job;
+
+    if ((dataPtr == NULL) || (macPtr == NULL) || (macLengthPtr == NULL))
+    {
+        return E_NOT_OK;
+    }
+
+    if (mode != CRYPTO_OPERATIONMODE_SINGLECALL)
+    {
+        return E_NOT_OK;
+    }
+
+    if (dataLength == 0u)
+    {
+        return E_NOT_OK;
+    }
+
+    if (*macLengthPtr < 16u)
+    {
+        return E_NOT_OK;
+    }
+
+    cfg = Csm_FindJobConfig(jobId);
+    if ((cfg == NULL) || (cfg->service != CRYPTO_SERVICE_CMAC_GENERATE))
+    {
+        return E_NOT_OK;
+    }
+
+    memset(&job, 0, sizeof(job));
+    job.jobId           = cfg->jobId;
+    job.channelId       = cfg->cryIfChannelId;
+    job.keyId           = cfg->keyId;
+    job.service         = cfg->service;
+    job.opMode          = mode;
+    job.inputPtr        = dataPtr;
+    job.inputLength     = dataLength;
+    job.outputPtr       = macPtr;
+    job.outputLengthPtr = macLengthPtr;
+
+    return Csm_SubmitToCryIf(&job);
+}
+
+Std_ReturnType Csm_MacVerify(uint32_t jobId,
+                             Crypto_OperationModeType mode,
+                             const uint8_t *dataPtr,
+                             uint32_t dataLength,
+                             const uint8_t *macPtr,
+                             uint32_t macLength)
+{
+    const Csm_JobConfigType *cfg;
+    Crypto_JobType job;
+
+    if ((dataPtr == NULL) || (macPtr == NULL))
+    {
+        return E_NOT_OK;
+    }
+
+    if (mode != CRYPTO_OPERATIONMODE_SINGLECALL)
+    {
+        return E_NOT_OK;
+    }
+
+    if ((dataLength == 0u) || (macLength != 16u))
+    {
+        return E_NOT_OK;
+    }
+
+    cfg = Csm_FindJobConfig(jobId);
+    if ((cfg == NULL) || (cfg->service != CRYPTO_SERVICE_CMAC_VERIFY))
+    {
+        return E_NOT_OK;
+    }
+
+    memset(&job, 0, sizeof(job));
+    job.jobId       = cfg->jobId;
+    job.channelId   = cfg->cryIfChannelId;
+    job.keyId       = cfg->keyId;
+    job.service     = cfg->service;
+    job.opMode      = mode;
+    job.inputPtr    = dataPtr;
+    job.inputLength = dataLength;
+    job.macPtr      = macPtr;
+    job.macLength   = macLength;
+
+    return Csm_SubmitToCryIf(&job);
+}
+
 void Csm_MainFunction(void)
 {
     for (uint32_t i = 0u; i < CSM_JOB_QUEUE_SIZE; ++i)

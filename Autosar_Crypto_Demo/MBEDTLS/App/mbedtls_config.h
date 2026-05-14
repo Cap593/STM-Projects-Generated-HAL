@@ -2086,7 +2086,7 @@
  *
  * Uncomment to enable generic cipher wrappers.
  */
-//#define MBEDTLS_CIPHER_C
+#define MBEDTLS_CIPHER_C
 
 /**
  * \def MBEDTLS_CMAC_C
@@ -2099,7 +2099,7 @@
  * Requires: MBEDTLS_AES_C or MBEDTLS_DES_C
  *
  */
-//#define MBEDTLS_CMAC_C
+#define MBEDTLS_CMAC_C
 
 /**
  * \def MBEDTLS_CTR_DRBG_C

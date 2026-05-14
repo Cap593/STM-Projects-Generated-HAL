@@ -3,6 +3,8 @@
 #include "mbedtls/entropy.h"
 #include "mbedtls/aes.h"
 #include "Crypto_FlashStore.h"
+#include "mbedtls/cipher.h"
+#include "mbedtls/cmac.h"
 
 /*
  * This file is intentionally written as a learning scaffold.
@@ -92,6 +94,25 @@ Crypto_KeySlotType Crypto_KeySlots[] =
         }
     }
 };
+
+static int Crypto_ConstantTimeEq(const uint8_t *a,
+                                 const uint8_t *b,
+                                 uint32_t len)
+{
+    uint8_t diff = 0u;
+
+    if ((a == NULL) || (b == NULL))
+    {
+        return 0;
+    }
+
+    for (uint32_t i = 0u; i < len; i++)
+    {
+        diff |= (uint8_t)(a[i] ^ b[i]);
+    }
+
+    return (diff == 0u) ? 1 : 0;
+}
 
 static Crypto_KeySlotType* Crypto_FindKeySlot(uint32_t keyId)
 {
@@ -323,6 +344,58 @@ void Crypto_Hw_Init(void)
         Crypto_KeySlots[0].status =
             CRYPTO_KEY_VALID;
     }
+}
+
+static Std_ReturnType Crypto_CmacGenerate128(const uint8_t *key,
+                                             const uint8_t *msg,
+                                             uint32_t msgLen,
+                                             uint8_t tag[16])
+{
+    const mbedtls_cipher_info_t *cipherInfo;
+
+    if ((key == NULL) || (msg == NULL) || (tag == NULL))
+    {
+        return E_NOT_OK;
+    }
+
+    cipherInfo = mbedtls_cipher_info_from_type(MBEDTLS_CIPHER_AES_128_ECB);
+    if (cipherInfo == NULL)
+    {
+        return E_NOT_OK;
+    }
+
+    if (mbedtls_cipher_cmac(cipherInfo, key, 128u, msg, msgLen, tag) != 0)
+    {
+        return E_NOT_OK;
+    }
+
+    return E_OK;
+}
+
+static Std_ReturnType Crypto_CmacVerify128(const uint8_t *key,
+                                           const uint8_t *msg,
+                                           uint32_t msgLen,
+                                           const uint8_t *expectedTag,
+                                           uint32_t expectedTagLen)
+{
+    uint8_t calcTag[16];
+
+    if ((key == NULL) || (msg == NULL) || (expectedTag == NULL))
+    {
+        return E_NOT_OK;
+    }
+
+    if (expectedTagLen != 16u)
+    {
+        return E_NOT_OK;
+    }
+
+    if (Crypto_CmacGenerate128(key, msg, msgLen, calcTag) != E_OK)
+    {
+        return E_NOT_OK;
+    }
+
+    return (Crypto_ConstantTimeEq(calcTag, expectedTag, 16u) == 1) ? E_OK : E_NOT_OK;
 }
 
 Std_ReturnType Crypto_Hw_KeyElementGet(
@@ -786,6 +859,66 @@ Std_ReturnType Crypto_Hw_ProcessJob(uint32_t cryptoObjectId,const Crypto_JobType
             job->inputLength;
 
         return E_OK;
+    }
+    else if ((job->service == CRYPTO_SERVICE_CMAC_GENERATE) ||
+             (job->service == CRYPTO_SERVICE_CMAC_VERIFY))
+    {
+        Crypto_KeySlotType *slot;
+
+        if (obj->path != CRYPTO_PATH_SW)
+        {
+            return E_NOT_OK;
+        }
+
+        if ((job->inputPtr == NULL) || (job->inputLength == 0u))
+        {
+            return E_NOT_OK;
+        }
+
+        slot = Crypto_FindKeySlot(job->keyId);
+        if ((slot == NULL) ||
+            (slot->status != CRYPTO_KEY_VALID) ||
+            (slot->element.length != 16u))
+        {
+            return E_NOT_OK;
+        }
+
+        if (job->service == CRYPTO_SERVICE_CMAC_GENERATE)
+        {
+            if ((job->outputPtr == NULL) || (job->outputLengthPtr == NULL))
+            {
+                return E_NOT_OK;
+            }
+
+            if (*(job->outputLengthPtr) < 16u)
+            {
+                return E_NOT_OK;
+            }
+
+            if (Crypto_CmacGenerate128(slot->element.data,
+                                       job->inputPtr,
+                                       job->inputLength,
+                                       job->outputPtr) != E_OK)
+            {
+                return E_NOT_OK;
+            }
+
+            *(job->outputLengthPtr) = 16u;
+            return E_OK;
+        }
+        else
+        {
+            if (Crypto_CmacVerify128(slot->element.data,
+                                     job->inputPtr,
+                                     job->inputLength,
+                                     job->macPtr,
+                                     job->macLength) != E_OK)
+            {
+                return E_NOT_OK;
+            }
+
+            return E_OK;
+        }
     }
     else
     {
