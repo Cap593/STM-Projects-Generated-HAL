@@ -160,6 +160,11 @@ uint8_t cmacMsg[] =
 uint8_t cmacTag[16];
 uint32_t cmacTagLen = sizeof(cmacTag);
 
+//HASH
+uint8_t msg[] = "Hello SHA256";
+uint8_t hash[32];
+uint32_t hashLen = sizeof(hash);
+
 
 /* USER CODE END PV */
 
@@ -622,7 +627,7 @@ int main(void)
       print_buffer(cbcDecrypt, decryptLen);
   }*/
 
-  UART_Print("\r\n=== AUTOSAR CMAC TEST ===\r\n");
+  /*UART_Print("\r\n=== AUTOSAR CMAC TEST ===\r\n");
 
   memset(cmacTag, 0, sizeof(cmacTag));
 
@@ -654,6 +659,28 @@ int main(void)
   else
   {
       UART_Print("CMAC VERIFY FAILED\r\n");
+  }*/
+
+  UART_Print("\r\n=== AUTOSAR SHA-256 TEST ===\r\n");
+  UART_Print("MSG: ");
+  UART_Print((char *)msg);
+  UART_Print("\r\n");
+
+  memset(hash, 0, sizeof(hash));
+
+  if (Csm_Hash(CSM_JOB_ID_HASH,
+               CRYPTO_OPERATIONMODE_SINGLECALL,
+               msg,
+               strlen((char *)msg),
+               hash,
+               &hashLen) == E_OK)
+  {
+      UART_Print("SHA256 OK\r\n");
+      print_hex("HASH",hash,hashLen);
+  }
+  else
+  {
+      UART_Print("SHA256 FAILED\r\n");
   }
 
 

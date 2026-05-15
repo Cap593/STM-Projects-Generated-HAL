@@ -462,6 +462,57 @@ Std_ReturnType Csm_MacVerify(uint32_t jobId,
     return Csm_SubmitToCryIf(&job);
 }
 
+Std_ReturnType Csm_Hash(uint32_t jobId,
+                        Crypto_OperationModeType mode,
+                        const uint8_t *dataPtr,
+                        uint32_t dataLength,
+                        uint8_t *resultPtr,
+                        uint32_t *resultLengthPtr)
+{
+    const Csm_JobConfigType *cfg;
+    Crypto_JobType job;
+
+    if ((resultPtr == NULL) || (resultLengthPtr == NULL))
+    {
+        return E_NOT_OK;
+    }
+
+    /* Allow empty message if you want SHA-256("") support */
+    if ((dataLength > 0u) && (dataPtr == NULL))
+    {
+        return E_NOT_OK;
+    }
+
+    if (mode != CRYPTO_OPERATIONMODE_SINGLECALL)
+    {
+        return E_NOT_OK;
+    }
+
+    if (*resultLengthPtr < CRYPTO_HASH_DIGEST_SIZE)
+    {
+        return E_NOT_OK;
+    }
+
+    cfg = Csm_FindJobConfig(jobId);
+    if ((cfg == NULL) || (cfg->service != CRYPTO_SERVICE_HASH))
+    {
+        return E_NOT_OK;
+    }
+
+    memset(&job, 0, sizeof(job));
+    job.jobId           = cfg->jobId;
+    job.channelId       = cfg->cryIfChannelId;
+    job.keyId           = cfg->keyId;   /* 0 for hash */
+    job.service         = cfg->service;
+    job.opMode          = mode;
+    job.inputPtr        = dataPtr;
+    job.inputLength     = dataLength;
+    job.outputPtr       = resultPtr;
+    job.outputLengthPtr = resultLengthPtr;
+
+    return Csm_SubmitToCryIf(&job);
+}
+
 void Csm_MainFunction(void)
 {
     for (uint32_t i = 0u; i < CSM_JOB_QUEUE_SIZE; ++i)

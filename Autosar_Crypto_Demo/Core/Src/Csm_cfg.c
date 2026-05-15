@@ -130,7 +130,18 @@ static const Csm_JobConfigType Csm_Jobs[] =
 	    .isAsynchronous  = false,
 	    .keyLength       = 0u,
 	    .maxResultLength = 16u
-	}
+	},
+	{
+	    .jobId           = CSM_JOB_ID_HASH,
+	    .service         = CRYPTO_SERVICE_HASH,
+	    .opMode          = CRYPTO_OPERATIONMODE_SINGLECALL,
+	    .cryIfChannelId  = CRYIF_CHANNEL_SW,
+	    .keyId           = 0u,
+	    .targetKeyId     = 0u,
+	    .isAsynchronous  = false,
+	    .keyLength       = 0u,
+	    .maxResultLength = CRYPTO_HASH_DIGEST_SIZE
+	},
 };
 
 const Csm_ConfigType Csm_Config =

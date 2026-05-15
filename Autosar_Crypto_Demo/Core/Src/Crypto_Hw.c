@@ -5,6 +5,7 @@
 #include "Crypto_FlashStore.h"
 #include "mbedtls/cipher.h"
 #include "mbedtls/cmac.h"
+#include "mbedtls/sha256.h"
 
 /*
  * This file is intentionally written as a learning scaffold.
@@ -184,6 +185,25 @@ static Std_ReturnType Crypto_SeedState(Crypto_RngStateType *state,
 
     state->state = s;
     return E_OK;
+}
+
+static Std_ReturnType Crypto_Sha256_ProcessBuffer(const uint8_t *input,
+                                                  uint32_t inputLength,
+                                                  uint8_t *output)
+{
+    uint8_t emptyByte = 0u;
+    const unsigned char *msg;
+    int ret;
+
+    if (output == NULL)
+    {
+        return E_NOT_OK;
+    }
+
+    msg = (inputLength == 0u) ? &emptyByte : input;
+
+    ret = mbedtls_sha256_ret(msg, (size_t)inputLength, output, 0);
+    return (ret == 0) ? E_OK : E_NOT_OK;
 }
 
 /* Placeholder for the real RH850F1KMS1 hardware call */
@@ -919,6 +939,43 @@ Std_ReturnType Crypto_Hw_ProcessJob(uint32_t cryptoObjectId,const Crypto_JobType
 
             return E_OK;
         }
+    }
+    else if (job->service == CRYPTO_SERVICE_HASH)
+    {
+        if ((job->outputPtr == NULL) || (job->outputLengthPtr == NULL))
+        {
+            return E_NOT_OK;
+        }
+
+        if (obj->path != CRYPTO_PATH_SW)
+        {
+            return E_NOT_OK;
+        }
+
+        if (job->inputPtr == NULL && job->inputLength > 0u)
+        {
+            return E_NOT_OK;
+        }
+
+        if (*(job->outputLengthPtr) < CRYPTO_HASH_DIGEST_SIZE)
+        {
+            return E_NOT_OK;
+        }
+
+        if (obj->supportsHash == false)
+        {
+            return E_NOT_OK;
+        }
+
+        if (Crypto_Sha256_ProcessBuffer(job->inputPtr,
+                                        job->inputLength,
+                                        job->outputPtr) != E_OK)
+        {
+            return E_NOT_OK;
+        }
+
+        *(job->outputLengthPtr) = CRYPTO_HASH_DIGEST_SIZE;
+        return E_OK;
     }
     else
     {
