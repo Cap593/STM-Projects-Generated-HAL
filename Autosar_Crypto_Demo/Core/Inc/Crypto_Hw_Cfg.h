@@ -11,9 +11,12 @@
 typedef struct
 {
     uint32_t        objectId;
-    Crypto_PathType  path;              /* HW or SW */
-    bool             supportsRandomGenerate;
-    bool             supportsRandomSeed;
+    Crypto_PathType path;
+    bool            supportsRandomGenerate;
+    bool            supportsRandomSeed;
+    bool            supportsAesEcbEncrypt;
+    bool            supportsAesEcbDecrypt;
+    bool            supportsHash;
     const char     *name;
 } Crypto_Hw_ObjectConfigType;
 

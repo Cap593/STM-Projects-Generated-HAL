@@ -16,6 +16,8 @@ typedef uint8_t Std_ReturnType;
 #define E_NOT_OK    ((Std_ReturnType)1u)
 #endif
 
+#define CRYPTO_HASH_DIGEST_SIZE   (32u)
+
 /* Generic Crypto service model */
 
 typedef enum
@@ -28,7 +30,8 @@ typedef enum
     CRYPTO_SERVICE_AES_CBC_ENCRYPT    = 5u,
     CRYPTO_SERVICE_AES_CBC_DECRYPT    = 6u,
     CRYPTO_SERVICE_CMAC_GENERATE      = 7u,
-    CRYPTO_SERVICE_CMAC_VERIFY        = 8u
+    CRYPTO_SERVICE_CMAC_VERIFY        = 8u,
+    CRYPTO_SERVICE_HASH               = 9u
 } Crypto_ServiceType;
 
 typedef enum

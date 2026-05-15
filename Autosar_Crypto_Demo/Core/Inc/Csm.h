@@ -53,6 +53,13 @@ Std_ReturnType Csm_MacVerify(uint32_t jobId,
                              const uint8_t *macPtr,
                              uint32_t macLength);
 
+Std_ReturnType Csm_Hash(uint32_t jobId,
+                        Crypto_OperationModeType mode,
+                        const uint8_t *dataPtr,
+                        uint32_t dataLength,
+                        uint8_t *resultPtr,
+                        uint32_t *resultLengthPtr);
+
 #ifdef __cplusplus
 }
 #endif

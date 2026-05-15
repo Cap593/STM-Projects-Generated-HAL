@@ -42,11 +42,12 @@ static bool CryIf_ServiceUsesKey(Crypto_ServiceType service)
         case CRYPTO_SERVICE_CMAC_GENERATE:
         case CRYPTO_SERVICE_CMAC_VERIFY:
             return true;
+
+        case CRYPTO_SERVICE_HASH:
         default:
             return false;
     }
 }
-
 void CryIf_Init(void)
 {
     /* Nothing to initialize in this small learning example. */

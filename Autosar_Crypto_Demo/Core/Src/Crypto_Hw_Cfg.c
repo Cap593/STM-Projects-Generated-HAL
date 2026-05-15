@@ -7,6 +7,9 @@ static const Crypto_Hw_ObjectConfigType Crypto_Objects[] =
         .path                   = CRYPTO_PATH_HW,
         .supportsRandomGenerate = true,
         .supportsRandomSeed     = true,
+        .supportsAesEcbEncrypt  = false,
+        .supportsAesEcbDecrypt  = false,
+        .supportsHash           = false,
         .name                   = "STM_HW_RNG"
     },
     {
@@ -14,7 +17,10 @@ static const Crypto_Hw_ObjectConfigType Crypto_Objects[] =
         .path                   = CRYPTO_PATH_SW,
         .supportsRandomGenerate = true,
         .supportsRandomSeed     = true,
-        .name                   = "SOFTWARE_RNG_CALLBACK"
+        .supportsAesEcbEncrypt  = true,
+        .supportsAesEcbDecrypt  = true,
+        .supportsHash           = true,
+        .name                   = "SOFTWARE_MBEDTLS_LIBRARY"
     }
 };
 
