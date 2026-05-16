@@ -513,6 +513,108 @@ Std_ReturnType Csm_Hash(uint32_t jobId,
     return Csm_SubmitToCryIf(&job);
 }
 
+Std_ReturnType Csm_SignatureGenerate(
+    uint32_t jobId,
+    Crypto_OperationModeType mode,
+    const uint8_t *dataPtr,
+    uint32_t dataLength,
+    uint8_t *signaturePtr,
+    uint32_t *signatureLengthPtr)
+{
+    const Csm_JobConfigType *cfg;
+
+    Crypto_JobType job;
+
+    if ((dataPtr == NULL) ||
+        (signaturePtr == NULL) ||
+        (signatureLengthPtr == NULL))
+    {
+        return E_NOT_OK;
+    }
+
+    if (mode != CRYPTO_OPERATIONMODE_SINGLECALL)
+    {
+        return E_NOT_OK;
+    }
+
+    cfg = Csm_FindJobConfig(jobId);
+
+    if ((cfg == NULL) ||
+        (cfg->service !=
+         CRYPTO_SERVICE_SIGNATURE_GENERATE))
+    {
+        return E_NOT_OK;
+    }
+
+    memset(&job,
+           0,
+           sizeof(Crypto_JobType));
+
+    job.jobId = cfg->jobId;
+    job.channelId = cfg->cryIfChannelId;
+    job.service = cfg->service;
+    job.opMode = mode;
+
+    job.inputPtr = dataPtr;
+    job.inputLength = dataLength;
+
+    job.outputPtr = signaturePtr;
+    job.outputLengthPtr =
+        signatureLengthPtr;
+
+    return Csm_SubmitToCryIf(&job);
+}
+
+Std_ReturnType Csm_SignatureVerify(
+    uint32_t jobId,
+    Crypto_OperationModeType mode,
+    const uint8_t *dataPtr,
+    uint32_t dataLength,
+    const uint8_t *signaturePtr,
+    uint32_t signatureLength)
+{
+    const Csm_JobConfigType *cfg;
+
+    Crypto_JobType job;
+
+    if ((dataPtr == NULL) ||
+        (signaturePtr == NULL))
+    {
+        return E_NOT_OK;
+    }
+
+    if (mode != CRYPTO_OPERATIONMODE_SINGLECALL)
+    {
+        return E_NOT_OK;
+    }
+
+    cfg = Csm_FindJobConfig(jobId);
+
+    if ((cfg == NULL) ||
+        (cfg->service !=
+         CRYPTO_SERVICE_SIGNATURE_VERIFY))
+    {
+        return E_NOT_OK;
+    }
+
+    memset(&job,
+           0,
+           sizeof(Crypto_JobType));
+
+    job.jobId = cfg->jobId;
+    job.channelId = cfg->cryIfChannelId;
+    job.service = cfg->service;
+    job.opMode = mode;
+
+    job.inputPtr = dataPtr;
+    job.inputLength = dataLength;
+
+    job.signaturePtr = signaturePtr;
+    job.signatureLength = signatureLength;
+
+    return Csm_SubmitToCryIf(&job);
+}
+
 void Csm_MainFunction(void)
 {
     for (uint32_t i = 0u; i < CSM_JOB_QUEUE_SIZE; ++i)

@@ -31,7 +31,9 @@ typedef enum
     CRYPTO_SERVICE_AES_CBC_DECRYPT    = 6u,
     CRYPTO_SERVICE_CMAC_GENERATE      = 7u,
     CRYPTO_SERVICE_CMAC_VERIFY        = 8u,
-    CRYPTO_SERVICE_HASH               = 9u
+    CRYPTO_SERVICE_HASH               = 9u,
+	CRYPTO_SERVICE_SIGNATURE_GENERATE = 10u,
+	CRYPTO_SERVICE_SIGNATURE_VERIFY   = 11u
 } Crypto_ServiceType;
 
 typedef enum
@@ -84,6 +86,9 @@ typedef struct
 
     const uint8_t           *seedPtr;
     uint32_t                 seedLength;
+
+    const uint8_t 			*signaturePtr;
+    uint32_t       			signatureLength;
 
     uint32_t                 keyLength;
 } Crypto_JobType;

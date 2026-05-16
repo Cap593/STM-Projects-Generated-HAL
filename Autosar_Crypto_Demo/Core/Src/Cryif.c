@@ -44,6 +44,8 @@ static bool CryIf_ServiceUsesKey(Crypto_ServiceType service)
             return true;
 
         case CRYPTO_SERVICE_HASH:
+        case CRYPTO_SERVICE_SIGNATURE_GENERATE:
+        case CRYPTO_SERVICE_SIGNATURE_VERIFY:
         default:
             return false;
     }
