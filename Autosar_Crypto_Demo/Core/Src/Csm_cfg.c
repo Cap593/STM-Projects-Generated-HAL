@@ -142,6 +142,28 @@ static const Csm_JobConfigType Csm_Jobs[] =
 	    .keyLength       = 0u,
 	    .maxResultLength = CRYPTO_HASH_DIGEST_SIZE
 	},
+	{
+	    .jobId           = CSM_JOB_ID_RSA_SIGN,
+	    .service         = CRYPTO_SERVICE_SIGNATURE_GENERATE,
+	    .opMode          = CRYPTO_OPERATIONMODE_SINGLECALL,
+	    .cryIfChannelId  = CRYIF_CHANNEL_SW,
+	    .keyId           = 0u,
+	    .targetKeyId     = 0u,
+	    .isAsynchronous  = false,
+	    .keyLength       = 0u,
+	    .maxResultLength = 512u
+	},
+	{
+	    .jobId           = CSM_JOB_ID_RSA_VERIFY,
+	    .service         = CRYPTO_SERVICE_SIGNATURE_VERIFY,
+	    .opMode          = CRYPTO_OPERATIONMODE_SINGLECALL,
+	    .cryIfChannelId  = CRYIF_CHANNEL_SW,
+	    .keyId           = 0u,
+	    .targetKeyId     = 0u,
+	    .isAsynchronous  = false,
+	    .keyLength       = 0u,
+	    .maxResultLength = 512u
+	},
 };
 
 const Csm_ConfigType Csm_Config =

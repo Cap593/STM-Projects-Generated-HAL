@@ -1079,7 +1079,7 @@
  *
  * Requires: MBEDTLS_BIGNUM_C
  */
-//#define MBEDTLS_GENPRIME
+#define MBEDTLS_GENPRIME
 
 /**
  * \def MBEDTLS_FS_IO
@@ -1199,7 +1199,7 @@
  *
  * This enables support for PKCS#1 v1.5 operations.
  */
-//#define MBEDTLS_PKCS1_V15
+#define MBEDTLS_PKCS1_V15
 
 /**
  * \def MBEDTLS_PKCS1_V21
@@ -1210,7 +1210,7 @@
  *
  * This enables support for RSAES-OAEP and RSASSA-PSS operations.
  */
-//#define MBEDTLS_PKCS1_V21
+#define MBEDTLS_PKCS1_V21
 
 /**
  * \def MBEDTLS_RSA_NO_CRT
@@ -1869,7 +1869,7 @@
  *          library/pkcs5.c
  *          library/pkparse.c
  */
-//#define MBEDTLS_ASN1_PARSE_C
+#define MBEDTLS_ASN1_PARSE_C
 
 /**
  * \def MBEDTLS_ASN1_WRITE_C
@@ -1895,7 +1895,7 @@
  *
  * This module is required for PEM support (required by X.509).
  */
-//#define MBEDTLS_BASE64_C
+#define MBEDTLS_BASE64_C
 
 /**
  * \def MBEDTLS_BIGNUM_C
@@ -1912,7 +1912,7 @@
  *
  * This module is required for RSA, DHM and ECC (ECDH, ECDSA) support.
  */
-//#define MBEDTLS_BIGNUM_C
+#define MBEDTLS_BIGNUM_C
 
 /**
  * \def MBEDTLS_BLOWFISH_C
@@ -2360,7 +2360,7 @@
  *
  * Uncomment to enable generic message digest wrappers.
  */
-//#define MBEDTLS_MD_C
+#define MBEDTLS_MD_C
 
 /**
  * \def MBEDTLS_MD2_C
@@ -2474,7 +2474,7 @@
  *
  * This modules translates between OIDs and internal values.
  */
-//#define MBEDTLS_OID_C
+#define MBEDTLS_OID_C
 
 /**
  * \def MBEDTLS_PADLOCK_C
@@ -2506,7 +2506,7 @@
  *
  * This modules adds support for decoding / parsing PEM files.
  */
-//#define MBEDTLS_PEM_PARSE_C
+#define MBEDTLS_PEM_PARSE_C
 
 /**
  * \def MBEDTLS_PEM_WRITE_C
@@ -2538,7 +2538,7 @@
  *
  * Uncomment to enable generic public key wrappers.
  */
-//#define MBEDTLS_PK_C
+#define MBEDTLS_PK_C
 
 /**
  * \def MBEDTLS_PK_PARSE_C
@@ -2553,7 +2553,7 @@
  *
  * Uncomment to enable generic public key parse functions.
  */
-//#define MBEDTLS_PK_PARSE_C
+#define MBEDTLS_PK_PARSE_C
 
 /**
  * \def MBEDTLS_PK_WRITE_C
@@ -2671,7 +2671,7 @@
  *
  * Requires: MBEDTLS_BIGNUM_C, MBEDTLS_OID_C
  */
-//#define MBEDTLS_RSA_C
+#define MBEDTLS_RSA_C
 
 /**
  * \def MBEDTLS_SHA1_C
@@ -2990,7 +2990,7 @@
 
 /* MPI / BIGNUM options */
 //#define MBEDTLS_MPI_WINDOW_SIZE            6 /**< Maximum windows size used. */
-//#define MBEDTLS_MPI_MAX_SIZE            1024 /**< Maximum number of bytes for usable MPIs. */
+#define MBEDTLS_MPI_MAX_SIZE            256 /**< Maximum number of bytes for usable MPIs. */
 
 /* CTR_DRBG options */
 //#define MBEDTLS_CTR_DRBG_ENTROPY_LEN               48 /**< Amount of entropy used per seed by default (48 with SHA-512, 32 with SHA-256) */

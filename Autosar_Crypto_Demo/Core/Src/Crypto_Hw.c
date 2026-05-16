@@ -6,6 +6,13 @@
 #include "mbedtls/cipher.h"
 #include "mbedtls/cmac.h"
 #include "mbedtls/sha256.h"
+#include "mbedtls/pk.h"
+#include "mbedtls/sha256.h"
+#include "rsa_keys.h"
+
+static mbedtls_pk_context rsa_priv_ctx;
+static mbedtls_pk_context rsa_pub_ctx;
+static uint8_t key_parse_error_flag;
 
 /*
  * This file is intentionally written as a learning scaffold.
@@ -139,7 +146,7 @@ static uint32_t Crypto_XorShift32(uint32_t x)
     return x;
 }
 
-static Std_ReturnType Crypto_GenerateBytes(Crypto_RngStateType *state,
+/*static Std_ReturnType Crypto_GenerateBytes(Crypto_RngStateType *state,
                                            uint8_t *out,
                                            uint32_t *outLen,
                                            uint8_t salt)
@@ -164,7 +171,7 @@ static Std_ReturnType Crypto_GenerateBytes(Crypto_RngStateType *state,
 
     state->state = s;
     return E_OK;
-}
+}*/
 
 static Std_ReturnType Crypto_SeedState(Crypto_RngStateType *state,
                                        const uint8_t *seed,
@@ -363,6 +370,28 @@ void Crypto_Hw_Init(void)
 
         Crypto_KeySlots[0].status =
             CRYPTO_KEY_VALID;
+    }
+
+    // Parsing RSA keys
+    mbedtls_pk_init(&rsa_priv_ctx);
+    mbedtls_pk_init(&rsa_pub_ctx);
+
+    if (mbedtls_pk_parse_key(
+            &rsa_priv_ctx,
+            (const unsigned char *)rsa_private_key_pem,
+            strlen(rsa_private_key_pem) + 1,
+            NULL,
+            0) != 0)
+    {
+        key_parse_error_flag = 1;
+    }
+
+    if (mbedtls_pk_parse_public_key(
+            &rsa_pub_ctx,
+            (const unsigned char *)rsa_public_key_pem,
+            strlen(rsa_public_key_pem) + 1) != 0)
+    {
+    	key_parse_error_flag = 1;
     }
 }
 
@@ -654,6 +683,74 @@ static Std_ReturnType Crypto_AesCbc_ProcessBuffer(
     return (ret == 0) ?
             E_OK :
             E_NOT_OK;
+}
+
+static Std_ReturnType Crypto_RsaSign(
+    const uint8_t *msg,
+    uint32_t msgLen,
+    uint8_t *sig,
+    uint32_t *sigLen)
+{
+    uint8_t hash[32];
+
+    size_t outLen = 0;
+
+    if (mbedtls_sha256_ret(
+            msg,
+            msgLen,
+            hash,
+            0) != 0)
+    {
+        return E_NOT_OK;
+    }
+
+    if (mbedtls_pk_sign(
+            &rsa_priv_ctx,
+            MBEDTLS_MD_SHA256,
+            hash,
+            0,
+            sig,
+            &outLen,
+            mbedtls_ctr_drbg_random,
+            &ctr_drbg) != 0)
+    {
+        return E_NOT_OK;
+    }
+
+    *sigLen = (uint32_t)outLen;
+
+    return E_OK;
+}
+
+static Std_ReturnType Crypto_RsaVerify(
+    const uint8_t *msg,
+    uint32_t msgLen,
+    const uint8_t *sig,
+    uint32_t sigLen)
+{
+    uint8_t hash[32];
+
+    if (mbedtls_sha256_ret(
+            msg,
+            msgLen,
+            hash,
+            0) != 0)
+    {
+        return E_NOT_OK;
+    }
+
+    if (mbedtls_pk_verify(
+            &rsa_pub_ctx,
+            MBEDTLS_MD_SHA256,
+            hash,
+            0,
+            sig,
+            sigLen) != 0)
+    {
+        return E_NOT_OK;
+    }
+
+    return E_OK;
 }
 
 Std_ReturnType Crypto_Hw_ProcessJob(uint32_t cryptoObjectId,const Crypto_JobType *job)
@@ -976,6 +1073,22 @@ Std_ReturnType Crypto_Hw_ProcessJob(uint32_t cryptoObjectId,const Crypto_JobType
 
         *(job->outputLengthPtr) = CRYPTO_HASH_DIGEST_SIZE;
         return E_OK;
+    }
+    else if (job->service == CRYPTO_SERVICE_SIGNATURE_GENERATE)
+    {
+        return Crypto_RsaSign(
+                    job->inputPtr,
+                    job->inputLength,
+                    job->outputPtr,
+                    job->outputLengthPtr);
+    }
+    else if (job->service == CRYPTO_SERVICE_SIGNATURE_VERIFY)
+    {
+        return Crypto_RsaVerify(
+                    job->inputPtr,
+                    job->inputLength,
+                    job->signaturePtr,
+                    job->signatureLength);
     }
     else
     {

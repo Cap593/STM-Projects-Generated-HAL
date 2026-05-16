@@ -165,6 +165,11 @@ uint8_t msg[] = "Hello SHA256";
 uint8_t hash[32];
 uint32_t hashLen = sizeof(hash);
 
+//RSA
+uint8_t rsaMsg[] = "AUTOSAR_RSA_TEST";
+uint8_t rsaSig[512];
+uint32_t rsaSigLen = sizeof(rsaSig);
+
 
 /* USER CODE END PV */
 
@@ -181,12 +186,12 @@ static void MX_USART2_UART_Init(void);
 /* USER CODE BEGIN 0 */
 
 /* Debug print helper */
-void UART_Print(char *msg)
+static void UART_Print(char *msg)
 {
     HAL_UART_Transmit(&huart2, (uint8_t *)msg, strlen(msg), HAL_MAX_DELAY);
 }
 
-void print_buffer(uint8_t *buf, uint32_t len)
+static void print_buffer(uint8_t *buf, uint32_t len)
 {
     char msg[100];
 
@@ -661,7 +666,7 @@ int main(void)
       UART_Print("CMAC VERIFY FAILED\r\n");
   }*/
 
-  UART_Print("\r\n=== AUTOSAR SHA-256 TEST ===\r\n");
+  /*UART_Print("\r\n=== AUTOSAR SHA-256 TEST ===\r\n");
   UART_Print("MSG: ");
   UART_Print((char *)msg);
   UART_Print("\r\n");
@@ -681,6 +686,36 @@ int main(void)
   else
   {
       UART_Print("SHA256 FAILED\r\n");
+  }*/
+
+  UART_Print("\r\n=== AUTOSAR RSA SIGN TEST ===\r\n");
+
+  if (Csm_SignatureGenerate(
+          CSM_JOB_ID_RSA_SIGN,
+          CRYPTO_OPERATIONMODE_SINGLECALL,
+          rsaMsg,
+          strlen((char *)rsaMsg),
+          rsaSig,
+          &rsaSigLen) == E_OK)
+  {
+      UART_Print("RSA SIGN OK\r\n");
+
+      print_hex("RSA Signature",rsaSig,rsaSigLen);
+  }
+
+  if (Csm_SignatureVerify(
+          CSM_JOB_ID_RSA_VERIFY,
+          CRYPTO_OPERATIONMODE_SINGLECALL,
+          rsaMsg,
+          strlen((char *)rsaMsg),
+          rsaSig,
+          rsaSigLen) == E_OK)
+  {
+      UART_Print("RSA VERIFY OK\r\n");
+  }
+  else
+  {
+      UART_Print("RSA VERIFY FAILED\r\n");
   }
 
 

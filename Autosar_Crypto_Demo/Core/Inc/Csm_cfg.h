@@ -46,6 +46,9 @@ typedef struct
 
 #define CSM_JOB_ID_HASH   				(3011u)
 
+#define CSM_JOB_ID_RSA_SIGN   			(3012u)
+#define CSM_JOB_ID_RSA_VERIFY 			(3013u)
+
 extern const Csm_ConfigType Csm_Config;
 
 #endif /* CSM_CFG_H */

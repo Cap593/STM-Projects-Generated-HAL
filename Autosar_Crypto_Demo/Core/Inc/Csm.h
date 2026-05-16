@@ -60,6 +60,22 @@ Std_ReturnType Csm_Hash(uint32_t jobId,
                         uint8_t *resultPtr,
                         uint32_t *resultLengthPtr);
 
+Std_ReturnType Csm_SignatureGenerate(
+    uint32_t jobId,
+    Crypto_OperationModeType mode,
+    const uint8_t *dataPtr,
+    uint32_t dataLength,
+    uint8_t *signaturePtr,
+    uint32_t *signatureLengthPtr);
+
+Std_ReturnType Csm_SignatureVerify(
+    uint32_t jobId,
+    Crypto_OperationModeType mode,
+    const uint8_t *dataPtr,
+    uint32_t dataLength,
+    const uint8_t *signaturePtr,
+    uint32_t signatureLength);
+
 #ifdef __cplusplus
 }
 #endif
