@@ -7,7 +7,6 @@
 #include "mbedtls/cmac.h"
 #include "mbedtls/sha256.h"
 #include "mbedtls/pk.h"
-#include "mbedtls/sha256.h"
 #include "rsa_keys.h"
 
 static mbedtls_pk_context rsa_priv_ctx;

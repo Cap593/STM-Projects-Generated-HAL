@@ -247,6 +247,8 @@ int main(void)
 
   /* USER CODE BEGIN SysInit */
 
+  __enable_irq();
+
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
