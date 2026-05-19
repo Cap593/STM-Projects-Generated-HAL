@@ -37,6 +37,15 @@ extern "C" {
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
 
+typedef struct
+{
+    uint32_t magic;              /* validity marker */
+    uint32_t imageSize;          /* application size in bytes */
+    uint32_t version;            /* optional */
+    uint8_t  imageHash[32];      /* SHA-256 of application image */
+    uint8_t  signature[256];     /* RSA-2048 signature */
+} Boot_ImageHeaderType;
+
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
@@ -53,6 +62,8 @@ extern "C" {
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
+
+typedef void (*pFunction)(void);
 
 /* USER CODE END EFP */
 

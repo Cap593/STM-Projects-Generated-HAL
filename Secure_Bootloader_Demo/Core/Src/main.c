@@ -23,14 +23,11 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
-#include <stdio.h>
-#include <string.h>
-
-#include "mbedtls/ctr_drbg.h"
-#include "mbedtls/entropy.h"
-#include "mbedtls/sha256.h"
 #include "mbedtls/pk.h"
-#include "rsa_keys.h"
+#include "mbedtls/sha256.h"
+#include <string.h>
+#include <stdio.h>
+#include "rsa_keys.h"   /* public key only */
 
 /* USER CODE END Includes */
 
@@ -41,6 +38,11 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+
+#define BOOTLOADER_START_ADDR   (0x08000000U)
+#define BOOT_HEADER_ADDR        (0x08010000U)
+#define APP_START_ADDR          (0x08020000U)
+#define BOOT_MAGIC              (0xB007B007U)
 
 /* USER CODE END PD */
 
@@ -65,10 +67,99 @@ static void MX_RNG_Init(void);
 static void MX_USART2_UART_Init(void);
 /* USER CODE BEGIN PFP */
 
+static mbedtls_pk_context rsa_pub_ctx;
+
+static void Bootloader_InitCrypto(void);
+static int Boot_CalcAppHash(const uint8_t *data, uint32_t len, uint8_t outHash[32]);
+static int Boot_VerifySignature(const uint8_t hash[32],
+                                const uint8_t *sig,
+                                uint32_t sigLen);
+static void Boot_JumpToApplication(void);
+static void UART_Print(char *msg);   /* your existing UART function */
+static void print_hex(const char *label, const uint8_t *buf, uint32_t len);
+
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+static void Bootloader_InitCrypto(void)
+{
+    mbedtls_pk_init(&rsa_pub_ctx);
+
+    if (mbedtls_pk_parse_public_key(
+            &rsa_pub_ctx,
+            (const unsigned char *)rsa_public_key_pem,
+            strlen(rsa_public_key_pem) + 1) != 0)
+    {
+        UART_Print("Public key parse failed\r\n");
+        Error_Handler();
+    }
+
+    UART_Print("Public key parsed\r\n");
+}
+
+static int Boot_CalcAppHash(const uint8_t *data, uint32_t len, uint8_t outHash[32])
+{
+    if (mbedtls_sha256_ret(data, len, outHash, 0) != 0)
+    {
+        return -1;
+    }
+
+    return 0;
+}
+
+static int Boot_VerifySignature(const uint8_t hash[32],
+                                const uint8_t *sig,
+                                uint32_t sigLen)
+{
+    if (mbedtls_pk_verify(&rsa_pub_ctx,
+                          MBEDTLS_MD_SHA256,
+                          hash,
+                          0,
+                          sig,
+                          sigLen) != 0)
+    {
+        return -1;
+    }
+
+    return 0;
+}
+
+static void Boot_JumpToApplication(void)
+{
+    uint32_t appStack = *(__IO uint32_t *)APP_START_ADDR;
+    uint32_t appReset = *(__IO uint32_t *)(APP_START_ADDR + 4U);
+    pFunction appEntry = (pFunction)appReset;
+
+    UART_Print("Jumping to application\r\n");
+
+    __disable_irq();
+
+    /* stop SysTick */
+    SysTick->CTRL = 0U;
+    SysTick->LOAD = 0U;
+    SysTick->VAL  = 0U;
+
+    /* deinit HAL and clocks */
+    HAL_RCC_DeInit();
+    HAL_DeInit();
+
+    /* disable all interrupts */
+    for (uint32_t i = 0U; i < 8U; i++)
+    {
+        NVIC->ICER[i] = 0xFFFFFFFFU;
+        NVIC->ICPR[i] = 0xFFFFFFFFU;
+    }
+
+    /* relocate vector table */
+    SCB->VTOR = APP_START_ADDR;
+
+    /* set application stack pointer */
+    __set_MSP(appStack);
+
+    appEntry();
+}
 
 static void UART_Print(char *msg)
 {
@@ -91,112 +182,6 @@ static void print_hex(const char *label, const uint8_t *buf, uint32_t len)
     UART_Print("\r\n");
 }
 
-static int rsa_imported_pem_sign_verify_demo(void)
-{
-    int ret = -1;
-
-    mbedtls_pk_context pk_priv;
-    mbedtls_pk_context pk_pub;
-    mbedtls_entropy_context entropy;
-    mbedtls_ctr_drbg_context ctr_drbg;
-
-    const uint8_t message[] = "Hello RSA Signature";
-    uint8_t hash[32];
-    uint8_t signature[512];
-    size_t sig_len = 0;
-
-    mbedtls_pk_init(&pk_priv);
-    mbedtls_pk_init(&pk_pub);
-    mbedtls_entropy_init(&entropy);
-    mbedtls_ctr_drbg_init(&ctr_drbg);
-
-    UART_Print("Seeding DRBG...\r\n");
-    ret = mbedtls_ctr_drbg_seed(&ctr_drbg,
-                                mbedtls_entropy_func,
-                                &entropy,
-                                (const unsigned char *)"rsa_pem_demo",
-                                strlen("rsa_pem_demo"));
-    if (ret != 0)
-    {
-        UART_Print("ctr_drbg_seed failed\r\n");
-        goto cleanup;
-    }
-
-    UART_Print("Parsing private key...\r\n");
-    ret = mbedtls_pk_parse_key(&pk_priv,
-                               (const unsigned char *)rsa_private_key_pem,
-                               strlen(rsa_private_key_pem) + 1,
-                               NULL,
-                               0);
-    if (ret != 0)
-    {
-        UART_Print("Private key parse failed\r\n");
-        goto cleanup;
-    }
-
-    UART_Print("Parsing public key...\r\n");
-    ret = mbedtls_pk_parse_public_key(&pk_pub,
-                                      (const unsigned char *)rsa_public_key_pem,
-                                      strlen(rsa_public_key_pem) + 1);
-    if (ret != 0)
-    {
-        UART_Print("Public key parse failed\r\n");
-        goto cleanup;
-    }
-
-    UART_Print("Hashing message...\r\n");
-    ret = mbedtls_sha256_ret(message, strlen((const char *)message), hash, 0);
-    if (ret != 0)
-    {
-        UART_Print("SHA256 failed\r\n");
-        goto cleanup;
-    }
-
-    print_hex("HASH", hash, sizeof(hash));
-
-    UART_Print("Signing hash...\r\n");
-    ret = mbedtls_pk_sign(&pk_priv,
-                          MBEDTLS_MD_SHA256,
-                          hash,
-                          0,
-                          signature,
-                          &sig_len,
-                          mbedtls_ctr_drbg_random,
-                          &ctr_drbg);
-    if (ret != 0)
-    {
-        UART_Print("RSA sign failed\r\n");
-        goto cleanup;
-    }
-
-    UART_Print("RSA SIGN OK\r\n");
-    print_hex("SIG", signature, (uint32_t)sig_len);
-
-    UART_Print("Verifying signature...\r\n");
-    ret = mbedtls_pk_verify(&pk_pub,
-                            MBEDTLS_MD_SHA256,
-                            hash,
-                            0,
-                            signature,
-                            sig_len);
-    if (ret == 0)
-    {
-        UART_Print("RSA VERIFY OK\r\n");
-    }
-    else
-    {
-        UART_Print("RSA VERIFY FAILED\r\n");
-    }
-
-cleanup:
-    mbedtls_pk_free(&pk_priv);
-    mbedtls_pk_free(&pk_pub);
-    mbedtls_ctr_drbg_free(&ctr_drbg);
-    mbedtls_entropy_free(&entropy);
-
-    return ret;
-}
-
 /* USER CODE END 0 */
 
 /**
@@ -207,6 +192,10 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
+
+  const Boot_ImageHeaderType *hdr;
+  uint8_t calcHash[32];
+  char tmp[32];
 
   /* USER CODE END 1 */
 
@@ -233,15 +222,68 @@ int main(void)
   MX_MBEDTLS_Init();
   /* USER CODE BEGIN 2 */
 
+  UART_Print("\r\n=== BOOTLOADER START ===\r\n");
 
-  if (rsa_imported_pem_sign_verify_demo() != 0)
+  Bootloader_InitCrypto();
+
+  hdr = (const Boot_ImageHeaderType *)BOOT_HEADER_ADDR;
+
+  if (hdr->magic != BOOT_MAGIC)
   {
-	  UART_Print("RSA DEMO FAILED\r\n");
+      UART_Print("Header magic invalid\r\n");
+      while (1)
+      {
+          UART_Print("Stay in bootloader\r\n");
+          HAL_Delay(1000);
+      }
   }
-  else
+
+  UART_Print("Header OK\r\n");
+  UART_Print("App size: ");
+  sprintf(tmp, "%lu\r\n", (unsigned long)hdr->imageSize);
+  UART_Print(tmp);
+
+  /* hash the application image */
+  if (Boot_CalcAppHash((const uint8_t *)APP_START_ADDR,
+                       hdr->imageSize,
+                       calcHash) != 0)
   {
-      UART_Print("RSA DEMO OK\r\n");
+      UART_Print("Hash failed\r\n");
+      while (1)
+      {
+      }
   }
+
+  UART_Print("App hash: ");
+  print_hex("", calcHash, sizeof(calcHash));
+
+  /* optional debug check: compare stored hash with computed hash */
+  if (memcmp(calcHash, hdr->imageHash, 32) != 0)
+  {
+      UART_Print("Stored hash mismatch\r\n");
+      while (1)
+      {
+          UART_Print("Stay in bootloader\r\n");
+          HAL_Delay(1000);
+      }
+  }
+
+  UART_Print("Hash match\r\n");
+
+  /* verify RSA signature over the hash */
+  if (Boot_VerifySignature(calcHash, hdr->signature, sizeof(hdr->signature)) != 0)
+  {
+      UART_Print("Signature verify failed\r\n");
+      while (1)
+      {
+          UART_Print("Stay in bootloader\r\n");
+          HAL_Delay(1000);
+      }
+  }
+
+  UART_Print("Signature verify OK\r\n");
+
+  Boot_JumpToApplication();
 
   /* USER CODE END 2 */
 
