@@ -46,6 +46,11 @@ The projects mainly focus on learning and experimenting with embedded peripheral
 - DRBG (Deterministic Random Bit Generator)
 - HMAC DRBG
 - AUTOSAR Crypto Demo
+- SHA
+- AES (ECB, CBC)
+- CMAC
+- RSA
+- Secure Boot
 
 ---
 
